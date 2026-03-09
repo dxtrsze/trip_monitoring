@@ -288,6 +288,17 @@ def upload_data():
                     def clean(val):
                         return val if val != '' else None
 
+                    # Handle branch name fallback logic
+                    branch_name = clean(row["Branch Name"])
+                    branch_name_v2 = clean(row["Branch Name v2"])
+
+                    # If branch_name is blank, use branch_name_v2
+                    if not branch_name:
+                        branch_name = branch_name_v2
+                    # If branch_name_v2 is blank, use branch_name
+                    elif not branch_name_v2:
+                        branch_name_v2 = branch_name
+
                     data_entry = Data(
                         type=row["Type"],
                         posting_date=posting_date,
@@ -300,8 +311,8 @@ def upload_data():
                         to_whse=clean(row["To Warehouse"]),
                         remarks=clean(row["Remarks"]),
                         special_instructions=clean(row["Special Instruction"]),
-                        branch_name=clean(row["Branch Name"]),
-                        branch_name_v2=clean(row["Branch Name v2"]),
+                        branch_name=branch_name,
+                        branch_name_v2=branch_name_v2,
                         document_status=clean(row["Document Status"]),
                         original_due_date=due_date,
                         due_date=due_date,
@@ -2893,68 +2904,6 @@ def export_daily_vehicle_counts():
     except Exception as e:
         flash(f'Error exporting data: {str(e)}', 'error')
         return redirect(url_for('daily_vehicle_counts'))
-
-
-@app.route('/grid')
-def grid():
-    datas = Data.query.all()
-    return render_template('grid_data.html', data=datas)
-    
-@app.route('/grid-data')
-def grid_data():
-    datas = Data.query.all()
-    grid_data = [[
-        data.id,
-        data.posting_date.strftime('%Y-%m-%d') if data.posting_date else '',
-        data.document_number,
-        data.item_number,
-        data.ordered_qty,
-        data.total_cbm,
-        data.delivered_qty,
-        data.branch_name,
-        data.status,
-        data.due_date.strftime('%Y-%m-%d') if data.due_date else ''
-    ] for data in datas]
-    return jsonify(grid_data)
-
-@app.route('/update-grid', methods=['POST'])
-def update_grid():
-    full_data = request.json.get('updatedData', [])
-    
-    for row in full_data:
-        if len(row) == 11:  # [id, posting_date, document_number, item_number, ordered_qty, total_cbm, delivered_qty, branch_name, status, due_date]
-            data_id, posting_date, document_number, item_number, ordered_qty, total_cbm, delivered_qty, branch_name, status, due_date = row
-            
-            if data_id:  # Existing data
-                data = db.session.get(Data, data_id)
-                if data:
-                    data.posting_date = datetime.strptime(posting_date, '%Y-%m-%d').date() if posting_date else None
-                    data.document_number = document_number
-                    data.item_number = item_number
-                    data.ordered_qty = int(ordered_qty) if str(ordered_qty).isdigit() else 0
-                    data.total_cbm = float(total_cbm) if total_cbm else 0.0
-                    data.delivered_qty = float(delivered_qty) if delivered_qty else 0.0
-                    data.branch_name = branch_name
-                    data.status = status
-                    data.due_date = datetime.strptime(due_date, '%Y-%m-%d').date() if due_date else None
-                    db.session.add(data)  # Update the existing record
-            else:  # New data
-                new_data = Data(
-                    posting_date=datetime.strptime(posting_date, '%Y-%m-%d').date() if posting_date else None,
-                    document_number=document_number,
-                    item_number=item_number,
-                    ordered_qty=int(ordered_qty) if str(ordered_qty).isdigit() else 0,
-                    total_cbm=float(total_cbm) if total_cbm else 0.0,
-                    delivered_qty=float(delivered_qty) if delivered_qty else 0.0,
-                    branch_name=branch_name,
-                    status=status,
-                    due_date=datetime.strptime(due_date, '%Y-%m-%d').date() if due_date else None,
-                    type="ITR"  # You need to set a default type or get it from the row
-                )
-                db.session.add(new_data)
-    
-    db.session.commit()
-    return jsonify({"status": "success"})
 
 
 # Scheduler for daily vehicle count
