@@ -6,7 +6,7 @@ from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 import pandas as pd
-from models import db, Vehicle, Manpower, Data, Schedule, Trip, TripDetail, Cluster, User, Odo
+from models import db, Vehicle, Manpower, Data, Schedule, Trip, TripDetail, Cluster, User, Odo, DailyVehicleCount
 from sqlalchemy import func
 from functools import wraps
 
@@ -411,13 +411,18 @@ def manage_vehicles():
 @app.route('/vehicles/add', methods=['POST'])
 def add_vehicle():
     plate_number = request.form.get('plate_number')
+    capacity = request.form.get('capacity')
 
     if not plate_number:
         flash('Plate number is required')
         return redirect(url_for('manage_vehicles'))
 
+    if not capacity:
+        flash('Capacity is required')
+        return redirect(url_for('manage_vehicles'))
+
     try:
-        vehicle = Vehicle(plate_number=plate_number)
+        vehicle = Vehicle(plate_number=plate_number, capacity=float(capacity))
         db.session.add(vehicle)
         db.session.commit()
         flash('Vehicle added successfully!')
@@ -438,6 +443,60 @@ def delete_vehicle(id):
     except Exception as e:
         db.session.rollback()
         flash(f'Error deleting vehicle: {str(e)}')
+
+    return redirect(url_for('manage_vehicles'))
+
+@app.route('/vehicles/<int:id>/deactivate', methods=['POST'])
+def deactivate_vehicle(id):
+    vehicle = Vehicle.query.get_or_404(id)
+
+    try:
+        vehicle.status = 'Inactive'
+        db.session.commit()
+        flash('Vehicle deactivated successfully!')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deactivating vehicle: {str(e)}')
+
+    return redirect(url_for('manage_vehicles'))
+
+@app.route('/vehicles/<int:id>/activate', methods=['POST'])
+def activate_vehicle(id):
+    vehicle = Vehicle.query.get_or_404(id)
+
+    try:
+        vehicle.status = 'Active'
+        db.session.commit()
+        flash('Vehicle activated successfully!')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error activating vehicle: {str(e)}')
+
+    return redirect(url_for('manage_vehicles'))
+
+@app.route('/vehicles/<int:id>/edit', methods=['POST'])
+def edit_vehicle(id):
+    vehicle = Vehicle.query.get_or_404(id)
+
+    plate_number = request.form.get('plate_number')
+    capacity = request.form.get('capacity')
+
+    if not plate_number:
+        flash('Plate number is required')
+        return redirect(url_for('manage_vehicles'))
+
+    if not capacity:
+        flash('Capacity is required')
+        return redirect(url_for('manage_vehicles'))
+
+    try:
+        vehicle.plate_number = plate_number
+        vehicle.capacity = float(capacity)
+        db.session.commit()
+        flash('Vehicle updated successfully!')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating vehicle: {str(e)}')
 
     return redirect(url_for('manage_vehicles'))
 
@@ -1035,7 +1094,8 @@ def add_schedule():
                                 'document_numbers': [],
                                 'total_cbm': 0.0,
                                 'total_ordered_qty': 0,
-                                'area': data.branch_name or data.branch_name_v2 or ''
+                                'area': data.branch_name or data.branch_name_v2 or '',
+                                'original_due_date': data.original_due_date  # Store original due date
                             }
 
                         branch_groups[branch_name]['data_ids'].append(data.id)
@@ -1058,12 +1118,25 @@ def add_schedule():
                         area=branch_data['area'],
                         total_cbm=branch_data['total_cbm'],
                         total_ordered_qty=branch_data['total_ordered_qty'],
-                        status="Delivered"
+                        total_delivered_qty=branch_data['total_ordered_qty'],  # Initialize with total_ordered_qty
+                        status="Delivered",
+                        original_due_date=branch_data['original_due_date']  # Save original due date
                     )
                     db.session.add(detail)
                     trip_total_cbm += branch_data['total_cbm']
 
                 trip.total_cbm = trip_total_cbm
+
+            # Update schedule with vehicle info and actual total CBM
+            # Get the first trip's vehicle information
+            if schedule.trips:
+                first_trip = schedule.trips[0]
+                if first_trip.vehicle:
+                    schedule.plate_number = first_trip.vehicle.plate_number
+                    schedule.capacity = first_trip.vehicle.capacity
+
+                # Calculate actual total CBM from all trips
+                schedule.actual = sum(trip.total_cbm for trip in schedule.trips)
 
             db.session.commit()
             flash("Schedule created successfully!", "success")
@@ -1075,7 +1148,7 @@ def add_schedule():
             return redirect(request.url)
 
     # GET: Load resources for form
-    vehicles = Vehicle.query.order_by(Vehicle.plate_number).all()
+    vehicles = Vehicle.query.filter_by(status='Active').order_by(Vehicle.plate_number).all()
     drivers = Manpower.query.filter_by(role='Driver').order_by(Manpower.name).all()
     assistants = Manpower.query.filter_by(role='Assistant').order_by(Manpower.name).all()
     return render_template('add_schedule.html',
@@ -1105,6 +1178,7 @@ def api_not_scheduled():
         func.min(subq.c.branch_name).label('branch_name'),
         func.min(subq.c.branch_name_v2).label('branch_name_v2'),
         func.min(subq.c.due_date).label('due_date'),
+        func.min(subq.c.original_due_date).label('original_due_date'),
         func.group_concat(subq.c.id).label('data_ids')  # Collect all IDs for this doc
     ).group_by(subq.c.document_number).all()
 
@@ -1129,6 +1203,7 @@ def api_not_scheduled():
             'branch': branch,
             'area': area,
             'due_date': row.due_date.strftime('%Y-%m-%d') if row.due_date else '',
+            'original_due_date': row.original_due_date.strftime('%Y-%m-%d') if row.original_due_date else '',
             'data_ids': row.data_ids.split(',')  # List of all Data.id for this doc
         })
 
@@ -1622,6 +1697,835 @@ def export_report():
     except Exception as e:
         return f"Error exporting report: {str(e)}", 500
 
+# Truck Load Utilization Routes
+@app.route('/truck_utilization')
+@login_required
+def truck_utilization():
+    if current_user.position != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('view_schedule'))
+
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    if not start_date_str or not end_date_str:
+        return jsonify([])
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # Query schedules within date range that have vehicle info
+        schedules = Schedule.query.filter(
+            Schedule.delivery_schedule >= start_date,
+            Schedule.delivery_schedule <= end_date,
+            Schedule.plate_number.isnot(None)
+        ).order_by(Schedule.delivery_schedule).all()
+
+        result = []
+        for schedule in schedules:
+            result.append({
+                'delivery_schedule': schedule.delivery_schedule.strftime('%Y-%m-%d'),
+                'plate_number': schedule.plate_number or 'N/A',
+                'capacity': schedule.capacity or 0,
+                'actual': schedule.actual or 0
+            })
+
+        return jsonify(result)
+
+    except ValueError as e:
+        return jsonify({'error': f'Invalid date format: {str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'error': f'Error fetching data: {str(e)}'}), 500
+
+@app.route('/export_truck_utilization')
+@login_required
+def export_truck_utilization():
+    if current_user.position != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('view_schedule'))
+
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    if not start_date_str or not end_date_str:
+        return "Start date and end date are required", 400
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # Query schedules within date range
+        schedules = Schedule.query.filter(
+            Schedule.delivery_schedule >= start_date,
+            Schedule.delivery_schedule <= end_date,
+            Schedule.plate_number.isnot(None)
+        ).order_by(Schedule.delivery_schedule).all()
+
+        # Create CSV data
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Write headers
+        writer.writerow(['Delivery Schedule', 'Plate Number', 'Capacity', 'Actual', '% Utilization'])
+
+        # Write data rows
+        for schedule in schedules:
+            capacity = schedule.capacity or 0
+            actual = schedule.actual or 0
+            utilization = (actual / capacity * 100) if capacity > 0 else 0
+
+            writer.writerow([
+                schedule.delivery_schedule.strftime('%Y-%m-%d'),
+                schedule.plate_number or 'N/A',
+                capacity,
+                f"{actual:.3f}",
+                f"{utilization:.1f}%"
+            ])
+
+        output.seek(0)
+
+        # Return as downloadable CSV file
+        filename = f"truck_utilization_{start_date_str}_to_{end_date_str}.csv"
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename={filename}'}
+        )
+
+    except ValueError as e:
+        return f"Invalid date format: {str(e)}", 400
+    except Exception as e:
+        return f"Error exporting truck utilization: {str(e)}", 500
+
+# Truck Fleet Utilization Routes
+@app.route('/truck_fleet_utilization')
+@login_required
+def truck_fleet_utilization():
+    if current_user.position != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('view_schedule'))
+
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    if not start_date_str or not end_date_str:
+        return jsonify([])
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # Get all dates in the range
+        from datetime import timedelta
+        date_list = []
+        current_date = start_date
+        while current_date <= end_date:
+            date_list.append(current_date)
+            current_date += timedelta(days=1)
+
+        result = []
+
+        for date in date_list:
+            # Count unique trucks (plate_numbers) used on this date from schedule table
+            schedules_on_date = Schedule.query.filter(
+                Schedule.delivery_schedule == date,
+                Schedule.plate_number.isnot(None)
+            ).all()
+
+            # Get unique plate numbers for this date
+            unique_trucks = set()
+            for schedule in schedules_on_date:
+                if schedule.plate_number:
+                    unique_trucks.add(schedule.plate_number)
+
+            trucks_used = len(unique_trucks)
+
+            # Get active truck count from daily_vehicle_count table
+            daily_count = DailyVehicleCount.query.filter_by(date=date).first()
+            active_trucks = daily_count.qty if daily_count else 0
+
+            result.append({
+                'date': date.strftime('%Y-%m-%d'),
+                'trucks_used': trucks_used,
+                'active_trucks': active_trucks
+            })
+
+        return jsonify(result)
+
+    except ValueError as e:
+        return jsonify({'error': f'Invalid date format: {str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'error': f'Error fetching data: {str(e)}'}), 500
+
+
+@app.route('/export_truck_fleet_utilization')
+@login_required
+def export_truck_fleet_utilization():
+    if current_user.position != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('view_schedule'))
+
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    if not start_date_str or not end_date_str:
+        return "Start date and end date are required", 400
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # Get all dates in the range
+        from datetime import timedelta
+        date_list = []
+        current_date = start_date
+        while current_date <= end_date:
+            date_list.append(current_date)
+            current_date += timedelta(days=1)
+
+        # Create CSV data
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Write headers
+        writer.writerow(['Date', 'Day', 'Trucks Used', 'Active Trucks', '% Utilization'])
+
+        # Write data rows
+        for date in date_list:
+            # Count unique trucks (plate_numbers) used on this date
+            schedules_on_date = Schedule.query.filter(
+                Schedule.delivery_schedule == date,
+                Schedule.plate_number.isnot(None)
+            ).all()
+
+            # Get unique plate numbers for this date
+            unique_trucks = set()
+            for schedule in schedules_on_date:
+                if schedule.plate_number:
+                    unique_trucks.add(schedule.plate_number)
+
+            trucks_used = len(unique_trucks)
+
+            # Get active truck count from daily_vehicle_count table
+            daily_count = DailyVehicleCount.query.filter_by(date=date).first()
+            active_trucks = daily_count.qty if daily_count else 0
+
+            # Calculate utilization percentage
+            utilization = (trucks_used / active_trucks * 100) if active_trucks > 0 else 0
+
+            day_name = date.strftime('%A')
+
+            writer.writerow([
+                date.strftime('%Y-%m-%d'),
+                day_name,
+                trucks_used,
+                active_trucks,
+                f"{utilization:.1f}%"
+            ])
+
+        output.seek(0)
+
+        # Return as downloadable CSV file
+        filename = f"truck_fleet_utilization_{start_date_str}_to_{end_date_str}.csv"
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename={filename}'}
+        )
+
+    except ValueError as e:
+        return f"Invalid date format: {str(e)}", 400
+    except Exception as e:
+        return f"Error exporting truck fleet utilization: {str(e)}", 500
+
+# Fuel Efficiency / ODO Routes
+@app.route('/api/vehicles')
+@login_required
+def api_vehicles():
+    """Get all vehicles for dropdown filter"""
+    if current_user.position != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+
+    vehicles = Vehicle.query.filter_by(status='Active').order_by(Vehicle.plate_number).all()
+    return jsonify([{'plate_number': v.plate_number} for v in vehicles])
+
+
+@app.route('/fuel_efficiency_data')
+@login_required
+def fuel_efficiency_data():
+    """Get ODO records for fuel efficiency report"""
+    if current_user.position != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('view_schedule'))
+
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    vehicle_filter = request.args.get('vehicle', '')
+    status_filter = request.args.get('status', '')
+
+    if not start_date_str or not end_date_str:
+        return jsonify([])
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # Include the entire end date
+        from datetime import timedelta
+        end_date = end_date + timedelta(days=1)
+
+        # Build query
+        query = Odo.query.filter(Odo.datetime >= start_date, Odo.datetime < end_date)
+
+        if vehicle_filter:
+            query = query.filter(Odo.plate_number == vehicle_filter)
+
+        if status_filter:
+            query = query.filter(Odo.status == status_filter)
+
+        # Order by datetime descending (newest first)
+        odo_records = query.order_by(Odo.datetime.desc()).all()
+
+        result = []
+        for odo in odo_records:
+            result.append({
+                'datetime': odo.datetime.strftime('%Y-%m-%d %H:%M:%S'),
+                'plate_number': odo.plate_number,
+                'status': odo.status,
+                'odometer_reading': odo.odometer_reading,
+                'litters': odo.litters,
+                'amount': odo.amount,
+                'price_per_litter': odo.price_per_litter,
+                'created_by': odo.created_by
+            })
+
+        return jsonify(result)
+
+    except ValueError as e:
+        return jsonify({'error': f'Invalid date format: {str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'error': f'Error fetching data: {str(e)}'}), 500
+
+
+@app.route('/export_fuel_efficiency')
+@login_required
+def export_fuel_efficiency():
+    """Export ODO records to CSV"""
+    if current_user.position != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('view_schedule'))
+
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    vehicle_filter = request.args.get('vehicle', '')
+    status_filter = request.args.get('status', '')
+
+    if not start_date_str or not end_date_str:
+        return "Start date and end date are required", 400
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # Include the entire end date
+        from datetime import timedelta
+        end_date = end_date + timedelta(days=1)
+
+        # Build query
+        query = Odo.query.filter(Odo.datetime >= start_date, Odo.datetime < end_date)
+
+        if vehicle_filter:
+            query = query.filter(Odo.plate_number == vehicle_filter)
+
+        if status_filter:
+            query = query.filter(Odo.status == status_filter)
+
+        # Order by datetime descending
+        odo_records = query.order_by(Odo.datetime.desc()).all()
+
+        # Create CSV data
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Write headers
+        writer.writerow([
+            'Date & Time', 'Plate Number', 'Status',
+            'Odometer Reading', 'Liters', 'Amount',
+            'Price Per Liter', 'Created By'
+        ])
+
+        # Write data rows
+        for odo in odo_records:
+            writer.writerow([
+                odo.datetime.strftime('%Y-%m-%d %H:%M:%S'),
+                odo.plate_number,
+                odo.status,
+                f"{odo.odometer_reading:.1f}",
+                f"{odo.litters:.2f}" if odo.litters else 'N/A',
+                f"{odo.amount:.2f}" if odo.amount else 'N/A',
+                f"{odo.price_per_litter:.2f}" if odo.price_per_litter else 'N/A',
+                odo.created_by
+            ])
+
+        output.seek(0)
+
+        # Return as downloadable CSV file
+        vehicle_suffix = f"_{vehicle_filter}" if vehicle_filter else ""
+        status_suffix = f"_{status_filter}" if status_filter else ""
+        filename = f"odo_records{vehicle_suffix}{status_suffix}_{start_date_str}_to_{end_date_str}.csv"
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename={filename}'}
+        )
+
+    except ValueError as e:
+        return f"Invalid date format: {str(e)}", 400
+    except Exception as e:
+        return f"Error exporting fuel efficiency data: {str(e)}", 500
+
+# Frequency Rate Routes
+@app.route('/frequency_rate')
+@login_required
+def frequency_rate():
+    if current_user.position != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('view_schedule'))
+
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    if not start_date_str or not end_date_str:
+        return jsonify([])
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # Include the entire end date
+        from datetime import timedelta
+        end_date = end_date + timedelta(days=1)
+
+        # Query schedules within date range
+        schedules = Schedule.query.filter(
+            Schedule.delivery_schedule >= start_date,
+            Schedule.delivery_schedule < end_date
+        ).all()
+
+        # Dictionary to store areas and their delivery dates
+        area_data = {}
+
+        for schedule in schedules:
+            # Get all trips for this schedule
+            for trip in schedule.trips:
+                # Get all trip details for this trip
+                for detail in trip.details:
+                    # Only count delivered trips
+                    if detail.status == 'Delivered':
+                        area = detail.area or 'Unknown'
+                        delivery_date = schedule.delivery_schedule.strftime('%Y-%m-%d')
+
+                        if area not in area_data:
+                            area_data[area] = {
+                                'dates': set()
+                            }
+
+                        # Add the date to the set (sets automatically handle duplicates)
+                        area_data[area]['dates'].add(delivery_date)
+
+        # Convert to list and sort by count of unique dates (descending)
+        result = []
+        for area, data in sorted(area_data.items(), key=lambda x: len(x[1]['dates']), reverse=True):
+            # Get sorted list of unique dates
+            sorted_dates = sorted(list(data['dates']))
+            # Count unique dates (each day counts as 1 regardless of how many deliveries)
+            delivery_count = len(sorted_dates)
+
+            result.append({
+                'area': area,
+                'delivery_count': delivery_count,
+                'areas': sorted_dates
+            })
+
+        return jsonify(result)
+
+    except ValueError as e:
+        return jsonify({'error': f'Invalid date format: {str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'error': f'Error fetching data: {str(e)}'}), 500
+
+
+@app.route('/export_frequency_rate')
+@login_required
+def export_frequency_rate():
+    """Export frequency rate to CSV"""
+    if current_user.position != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('view_schedule'))
+
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    if not start_date_str or not end_date_str:
+        return "Start date and end date are required", 400
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # Include the entire end date
+        from datetime import timedelta
+        end_date = end_date + timedelta(days=1)
+
+        # Query schedules within date range
+        schedules = Schedule.query.filter(
+            Schedule.delivery_schedule >= start_date,
+            Schedule.delivery_schedule < end_date
+        ).all()
+
+        # Dictionary to store areas and their delivery dates
+        area_data = {}
+
+        for schedule in schedules:
+            # Get all trips for this schedule
+            for trip in schedule.trips:
+                # Get all trip details for this trip
+                for detail in trip.details:
+                    # Only count delivered trips
+                    if detail.status == 'Delivered':
+                        area = detail.area or 'Unknown'
+                        delivery_date = schedule.delivery_schedule.strftime('%Y-%m-%d')
+
+                        if area not in area_data:
+                            area_data[area] = {
+                                'dates': set()
+                            }
+
+                        # Add the date to the set (sets automatically handle duplicates)
+                        area_data[area]['dates'].add(delivery_date)
+
+        # Create CSV data
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Write headers
+        writer.writerow(['Rank', 'Area/Branch', 'Delivery Count', 'Delivery Dates'])
+
+        # Write data rows (sorted by count of unique dates descending)
+        rank = 1
+        for area, data in sorted(area_data.items(), key=lambda x: len(x[1]['dates']), reverse=True):
+            sorted_dates = sorted(list(data['dates']))
+            dates_str = ', '.join(sorted_dates)
+            delivery_count = len(sorted_dates)  # Count unique dates
+
+            writer.writerow([
+                rank,
+                area,
+                delivery_count,
+                dates_str
+            ])
+            rank += 1
+
+        output.seek(0)
+
+        # Return as downloadable CSV file
+        filename = f"frequency_rate_{start_date_str}_to_{end_date_str}.csv"
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename={filename}'}
+        )
+
+    except ValueError as e:
+        return f"Invalid date format: {str(e)}", 400
+    except Exception as e:
+        return f"Error exporting frequency rate: {str(e)}", 500
+
+# DIFOT Routes
+@app.route('/difot_data')
+@login_required
+def difot_data():
+    """Get DIFOT (Delivery In Full, On Time) data"""
+    if current_user.position != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('view_schedule'))
+
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    if not start_date_str or not end_date_str:
+        return jsonify([])
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # Include the entire end date
+        from datetime import timedelta
+        end_date = end_date + timedelta(days=1)
+
+        # Query schedules within date range with trip details
+        schedules = Schedule.query.filter(
+            Schedule.delivery_schedule >= start_date,
+            Schedule.delivery_schedule < end_date
+        ).all()
+
+        result = []
+        for schedule in schedules:
+            for trip in schedule.trips:
+                for detail in trip.details:
+                    # Only show delivered items
+                    if detail.status == 'Delivered':
+                        # Calculate On Time: scheduled_date - original_due_date
+                        days_late = None
+                        if detail.original_due_date:
+                            days_late = (schedule.delivery_schedule - detail.original_due_date).days
+
+                        # Calculate In Full: total_delivered_qty - total_ordered_qty
+                        qty_diff = None
+                        if detail.total_delivered_qty is not None and detail.total_ordered_qty is not None:
+                            qty_diff = detail.total_delivered_qty - detail.total_ordered_qty
+
+                        result.append({
+                            'scheduled_date': schedule.delivery_schedule.strftime('%Y-%m-%d'),
+                            'branch_name_v2': detail.branch_name_v2,
+                            'total_ordered_qty': detail.total_ordered_qty or 0,
+                            'original_due_date': detail.original_due_date.strftime('%Y-%m-%d') if detail.original_due_date else 'N/A',
+                            'total_delivered_qty': detail.total_delivered_qty or 0,
+                            'days_late': days_late,
+                            'qty_diff': qty_diff
+                        })
+
+        return jsonify(result)
+
+    except ValueError as e:
+        return jsonify({'error': f'Invalid date format: {str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'error': f'Error fetching data: {str(e)}'}), 500
+
+
+@app.route('/export_difot')
+@login_required
+def export_difot():
+    """Export DIFOT data to CSV"""
+    if current_user.position != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('view_schedule'))
+
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    if not start_date_str or not end_date_str:
+        return "Start date and end date are required", 400
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # Include the entire end date
+        from datetime import timedelta
+        end_date = end_date + timedelta(days=1)
+
+        # Query schedules within date range with trip details
+        schedules = Schedule.query.filter(
+            Schedule.delivery_schedule >= start_date,
+            Schedule.delivery_schedule < end_date
+        ).all()
+
+        # Create CSV data
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Write headers
+        writer.writerow([
+            'Scheduled Date', 'Branch', 'Total Ordered Qty',
+            'Original Due Date', 'Total Delivered Qty', 'On Time', 'In Full'
+        ])
+
+        # Write data rows
+        for schedule in schedules:
+            for trip in schedule.trips:
+                for detail in trip.details:
+                    # Only show delivered items
+                    if detail.status == 'Delivered':
+                        # Calculate On Time
+                        days_late = None
+                        on_time_status = 'N/A'
+                        if detail.original_due_date:
+                            days_late = (schedule.delivery_schedule - detail.original_due_date).days
+                            if days_late <= 0:
+                                days_early = abs(days_late)
+                                on_time_status = 'On Time' if days_early == 0 else f'{days_early} Day(s) Early'
+                            else:
+                                on_time_status = f'{days_late} Day(s) Late'
+
+                        # Calculate In Full
+                        qty_diff = None
+                        in_full_status = 'N/A'
+                        if detail.total_delivered_qty is not None and detail.total_ordered_qty is not None:
+                            qty_diff = detail.total_delivered_qty - detail.total_ordered_qty
+                            if qty_diff >= 0:
+                                in_full_status = f'In Full' + (f' (+{qty_diff})' if qty_diff > 0 else '')
+                            else:
+                                in_full_status = f'Shortage ({abs(qty_diff)})'
+
+                        writer.writerow([
+                            schedule.delivery_schedule.strftime('%Y-%m-%d'),
+                            detail.branch_name_v2,
+                            detail.total_ordered_qty or 0,
+                            detail.original_due_date.strftime('%Y-%m-%d') if detail.original_due_date else 'N/A',
+                            detail.total_delivered_qty or 0,
+                            on_time_status,
+                            in_full_status
+                        ])
+
+        output.seek(0)
+
+        # Return as downloadable CSV file
+        filename = f"difot_report_{start_date_str}_to_{end_date_str}.csv"
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename={filename}'}
+        )
+
+    except ValueError as e:
+        return f"Invalid date format: {str(e)}", 400
+    except Exception as e:
+        return f"Error exporting DIFOT data: {str(e)}", 500
+
+# Daily Vehicle Count Routes
+@app.route('/daily_vehicle_counts')
+@login_required
+def daily_vehicle_counts():
+    if current_user.position != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('view_schedule'))
+
+    # Get all daily vehicle counts, ordered by date descending
+    counts = DailyVehicleCount.query.order_by(DailyVehicleCount.date.desc()).all()
+    return render_template('daily_vehicle_counts.html', counts=counts)
+
+
+@app.route('/run_vehicle_count', methods=['POST'])
+@login_required
+def run_vehicle_count():
+    """Manually trigger the daily vehicle count"""
+    if current_user.position != 'admin':
+        return jsonify({'success': False, 'message': 'Access denied. Admin privileges required.'})
+
+    success = count_daily_active_vehicles()
+
+    if success:
+        from models import DailyVehicleCount
+        today = datetime.now().date()
+        count = DailyVehicleCount.query.filter_by(date=today).first()
+        return jsonify({
+            'success': True,
+            'message': f'Successfully counted {count.qty} active vehicles for {today.strftime("%B %d, %Y")}'
+        })
+    else:
+        return jsonify({'success': False, 'message': 'Failed to count vehicles. Check server logs.'})
+
+
+@app.route('/daily_vehicle_counts/<int:id>/edit', methods=['POST'])
+@login_required
+def edit_daily_vehicle_count(id):
+    """Edit a daily vehicle count record"""
+    if current_user.position != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('daily_vehicle_counts'))
+
+    count = DailyVehicleCount.query.get_or_404(id)
+
+    date_str = request.form.get('date')
+    qty = request.form.get('qty')
+
+    if not date_str:
+        flash('Date is required', 'error')
+        return redirect(url_for('daily_vehicle_counts'))
+
+    if not qty:
+        flash('Quantity is required', 'error')
+        return redirect(url_for('daily_vehicle_counts'))
+
+    try:
+        # Parse the date
+        new_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+
+        # Check if another record with the same date exists (excluding current record)
+        existing = DailyVehicleCount.query.filter(
+            DailyVehicleCount.date == new_date,
+            DailyVehicleCount.id != id
+        ).first()
+
+        if existing:
+            flash(f'A record for {new_date.strftime("%B %d, %Y")} already exists.', 'error')
+            return redirect(url_for('daily_vehicle_counts'))
+
+        # Update the record
+        count.date = new_date
+        count.qty = int(qty)
+        db.session.commit()
+
+        flash(f'Daily vehicle count updated successfully!', 'success')
+    except ValueError as e:
+        db.session.rollback()
+        flash(f'Invalid date format: {str(e)}', 'error')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating record: {str(e)}', 'error')
+
+    return redirect(url_for('daily_vehicle_counts'))
+
+
+@app.route('/export_daily_vehicle_counts')
+@login_required
+def export_daily_vehicle_counts():
+    """Export daily vehicle counts to CSV"""
+    if current_user.position != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('view_schedule'))
+
+    try:
+        # Get all daily vehicle counts
+        counts = DailyVehicleCount.query.order_by(DailyVehicleCount.date.desc()).all()
+
+        # Create CSV data
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Write headers
+        writer.writerow(['Date', 'Day', 'Active Vehicles Count', 'Recorded At'])
+
+        # Write data rows
+        for count in counts:
+            day_name = count.date.strftime('%A')
+            recorded_at = count.created_at.strftime('%Y-%m-%d %H:%M:%S') if count.created_at else 'N/A'
+
+            writer.writerow([
+                count.date.strftime('%Y-%m-%d'),
+                day_name,
+                count.qty,
+                recorded_at
+            ])
+
+        output.seek(0)
+
+        # Return as downloadable CSV file
+        filename = f"daily_vehicle_counts_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename={filename}'}
+        )
+
+    except Exception as e:
+        flash(f'Error exporting data: {str(e)}', 'error')
+        return redirect(url_for('daily_vehicle_counts'))
+
+
 @app.route('/grid')
 def grid():
     datas = Data.query.all()
@@ -1684,5 +2588,80 @@ def update_grid():
     return jsonify({"status": "success"})
 
 
+# Scheduler for daily vehicle count
+def count_daily_active_vehicles():
+    """Count active vehicles and save to DailyVehicleCount table"""
+    try:
+        from models import DailyVehicleCount
+        today = datetime.now().date()
+
+        # Check if record already exists for today
+        existing_count = DailyVehicleCount.query.filter_by(date=today).first()
+
+        # Count active vehicles
+        active_count = Vehicle.query.filter_by(status='Active').count()
+
+        if existing_count:
+            # Update existing record
+            existing_count.qty = active_count
+            print(f"[{datetime.now()}] Updated daily vehicle count for {today}: {active_count} active vehicles")
+        else:
+            # Create new record
+            daily_count = DailyVehicleCount(date=today, qty=active_count)
+            db.session.add(daily_count)
+            print(f"[{datetime.now()}] Created daily vehicle count for {today}: {active_count} active vehicles")
+
+        db.session.commit()
+        return True
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"[{datetime.now()}] Error counting daily vehicles: {str(e)}")
+        return False
+
+
+# Initialize and start scheduler
+def init_scheduler():
+    """Initialize the background scheduler for daily tasks"""
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from apscheduler.triggers.cron import CronTrigger
+        import atexit
+
+        scheduler = BackgroundScheduler()
+
+        # Schedule job to run every day at 5:00 AM
+        scheduler.add_job(
+            func=count_daily_active_vehicles,
+            trigger=CronTrigger(hour=5, minute=0),
+            id='daily_vehicle_count',
+            name='Count daily active vehicles',
+            replace_existing=True
+        )
+
+        # Start the scheduler
+        scheduler.start()
+        print(f"[{datetime.now()}] Scheduler started. Daily vehicle count will run at 5:00 AM daily.")
+
+        # Shut down the scheduler when exiting the app
+        atexit.register(lambda: scheduler.shutdown())
+
+        return scheduler
+    except ImportError:
+        print("[WARNING] APScheduler not installed. Install it with: pip install apscheduler")
+        print("[WARNING] Daily vehicle count will not run automatically.")
+        return None
+    except Exception as e:
+        print(f"[ERROR] Failed to start scheduler: {str(e)}")
+        return None
+
+
+# Initialize scheduler when app starts
+scheduler = None
+
+
 if __name__ == '__main__':
+    # Start the scheduler
+    scheduler = init_scheduler()
+
     app.run(debug=True, host='0.0.0.0', port=5015)

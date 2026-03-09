@@ -1,50 +1,227 @@
 {% extends "base.html" %}
-{% block title %}Scheduled Tripping Reports{% endblock %}
+{% block title %}Reports{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h1>Scheduled Tripping Reports</h1>
+  <h1>Reports</h1>
 </div>
 
-<div class="card">
-  <div class="card-header">
-    <h5>Generate Scheduled Tripping Report</h5>
+<div class="row mb-4">
+  <!-- Scheduled Tripping Reports Card -->
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-calendar-check"></i> Scheduled Tripping Reports</h5>
+      </div>
+      <div class="card-body">
+        <form id="scheduledReportForm">
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <label for="scheduledReportType" class="form-label">Report Type</label>
+              <select class="form-select" id="scheduledReportType" required>
+                <option value="scheduled_trips" selected>Scheduled Trips</option>
+                <option value="cancelled_trips">Cancelled Trips</option>
+                <option value="vehicle_utilization">Vehicle Utilization</option>
+                <option value="driver_performance">Driver Performance</option>
+              </select>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="scheduledStartDate" class="form-label">Start Date</label>
+              <input type="date" class="form-control" id="scheduledStartDate" required>
+            </div>
+            <div class="col-md-6">
+              <label for="scheduledEndDate" class="form-label">End Date</label>
+              <input type="date" class="form-control" id="scheduledEndDate" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Generate Report</button>
+        </form>
+      </div>
+    </div>
   </div>
-  <div class="card-body">
-    <form id="reportForm">
-      <div class="row mb-3">
-        <div class="col-md-6">
-          <label for="reportType" class="form-label">Report Type</label>
-          <select class="form-select" id="reportType" required>
-            <option value="scheduled_trips" selected>Scheduled Trips Report</option>
-            <option value="cancelled_trips">Cancelled Trips Report</option>
-            <option value="vehicle_utilization">Vehicle Utilization Report</option>
-            <option value="driver_performance">Driver Performance Report</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="startDate" class="form-label">Start Date</label>
-          <input type="date" class="form-control" id="startDate" required>
-        </div>
-        <div class="col-md-3">
-          <label for="endDate" class="form-label">End Date</label>
-          <input type="date" class="form-control" id="endDate" required>
-        </div>
+
+  <!-- Truck Load Utilization Card -->
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="bi bi-truck"></i> Truck Load Utilization</h5>
       </div>
-      <div class="row">
-        <div class="col-md-12">
-          <button type="submit" class="btn btn-primary">Generate Report</button>
-          <button type="button" class="btn btn-success ms-2" id="exportBtn" style="display:none;">Export to Excel</button>
-        </div>
+      <div class="card-body">
+        <form id="truckUtilForm">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="truckStartDate" class="form-label">Start Date</label>
+              <input type="date" class="form-control" id="truckStartDate" required>
+            </div>
+            <div class="col-md-6">
+              <label for="truckEndDate" class="form-label">End Date</label>
+              <input type="date" class="form-control" id="truckEndDate" required>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <button type="submit" class="btn btn-success w-100">
+                <i class="bi bi-table"></i> View Truck Load Data
+              </button>
+            </div>
+          </div>
+        </form>
       </div>
-    </form>
+    </div>
+  </div>
+
+  <!-- Truck Utilization Card -->
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="bi bi-truck"></i> Truck Utilization</h5>
+      </div>
+      <div class="card-body">
+        <form id="truckFleetUtilForm">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="fleetStartDate" class="form-label">Start Date</label>
+              <input type="date" class="form-control" id="fleetStartDate" required>
+            </div>
+            <div class="col-md-6">
+              <label for="fleetEndDate" class="form-label">End Date</label>
+              <input type="date" class="form-control" id="fleetEndDate" required>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <button type="submit" class="btn btn-info w-100 text-white">
+                <i class="bi bi-graph-up"></i> View Fleet Utilization
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </div>
 
+<div class="row mb-4">
+  <!-- Fuel Efficiency Card -->
+  <div class="col-md-6 mb-3">
+    <div class="card h-100">
+      <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0"><i class="bi bi-fuel-pump"></i> Fuel Efficiency (ODO)</h5>
+      </div>
+      <div class="card-body">
+        <form id="fuelEffForm">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="fuelStartDate" class="form-label">Start Date</label>
+              <input type="date" class="form-control" id="fuelStartDate" required>
+            </div>
+            <div class="col-md-6">
+              <label for="fuelEndDate" class="form-label">End Date</label>
+              <input type="date" class="form-control" id="fuelEndDate" required>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="fuelVehicleFilter" class="form-label">Vehicle (Optional)</label>
+              <select class="form-select" id="fuelVehicleFilter">
+                <option value="">All Vehicles</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="fuelStatusFilter" class="form-label">Status (Optional)</label>
+              <select class="form-select" id="fuelStatusFilter">
+                <option value="">All Status</option>
+                <option value="start odo">Start Odo</option>
+                <option value="refill odo">Refill Odo</option>
+                <option value="end odo">End Odo</option>
+              </select>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <button type="submit" class="btn btn-warning w-100 text-dark">
+                <i class="bi bi-fuel-pump"></i> View ODO Records
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Frequency Rate Card -->
+  <div class="col-md-6 mb-3">
+    <div class="card h-100">
+      <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0"><i class="bi bi-graph-up-arrow"></i> Frequency Rate</h5>
+      </div>
+      <div class="card-body">
+        <form id="frequencyRateForm">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="frequencyStartDate" class="form-label">Start Date</label>
+              <input type="date" class="form-control" id="frequencyStartDate" required>
+            </div>
+            <div class="col-md-6">
+              <label for="frequencyEndDate" class="form-label">End Date</label>
+              <input type="date" class="form-control" id="frequencyEndDate" required>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <button type="submit" class="btn btn-secondary w-100 text-white">
+                <i class="bi bi-bar-chart"></i> View Frequency Rate
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIFOT Card -->
+  <div class="col-md-6 mb-3">
+    <div class="card h-100">
+      <div class="card-header bg-danger text-white">
+        <h5 class="mb-0"><i class="bi bi-clock-history"></i> DIFOT (Delivery In Full, On Time)</h5>
+      </div>
+      <div class="card-body">
+        <form id="difotForm">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="difotStartDate" class="form-label">Start Date</label>
+              <input type="date" class="form-control" id="difotStartDate" required>
+            </div>
+            <div class="col-md-6">
+              <label for="difotEndDate" class="form-label">End Date</label>
+              <input type="date" class="form-control" id="difotEndDate" required>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <button type="submit" class="btn btn-danger w-100 text-white">
+                <i class="bi bi-graph-up-arrow"></i> View DIFOT Report
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scheduled Report Results -->
 <div class="card mt-4" id="reportResults" style="display:none;">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h5 id="reportTitle">Report Results</h5>
-    <span id="reportDateRange"></span>
+    <div>
+      <span id="reportDateRange" class="me-3"></span>
+      <button type="button" class="btn btn-sm btn-success" id="exportBtn">
+        <i class="bi bi-file-earmark-excel"></i> Export CSV
+      </button>
+    </div>
   </div>
   <div class="card-body">
     <div class="table-responsive">
@@ -60,9 +237,168 @@
   </div>
 </div>
 
+<!-- Truck Load Utilization Results -->
+<div class="card mt-4" id="truckResults" style="display:none;">
+  <div class="card-header d-flex justify-content-between align-items-center bg-success text-white">
+    <h5><i class="bi bi-truck"></i> Truck Load Utilization Report</h5>
+    <div>
+      <span id="truckDateRange" class="me-3"></span>
+      <button type="button" class="btn btn-sm btn-light" id="exportTruckBtn">
+        <i class="bi bi-download"></i> Export CSV
+      </button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover" id="truckTable">
+        <thead>
+          <tr>
+            <th>Delivery Schedule</th>
+            <th>Plate Number</th>
+            <th>Capacity (CBM)</th>
+            <th>Actual (CBM)</th>
+            <th>% Utilization</th>
+          </tr>
+        </thead>
+        <tbody id="truckTableBody">
+          <!-- Truck data will be dynamically inserted here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Truck Fleet Utilization Results -->
+<div class="card mt-4" id="fleetResults" style="display:none;">
+  <div class="card-header d-flex justify-content-between align-items-center bg-info text-white">
+    <h5><i class="bi bi-truck"></i> Truck Fleet Utilization Report</h5>
+    <div>
+      <span id="fleetDateRange" class="me-3"></span>
+      <button type="button" class="btn btn-sm btn-light" id="exportFleetBtn">
+        <i class="bi bi-download"></i> Export CSV
+      </button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover" id="fleetTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Trucks Used</th>
+            <th>Active Trucks</th>
+            <th>% Utilization</th>
+          </tr>
+        </thead>
+        <tbody id="fleetTableBody">
+          <!-- Fleet utilization data will be dynamically inserted here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Fuel Efficiency/ODO Results -->
+<div class="card mt-4" id="fuelResults" style="display:none;">
+  <div class="card-header d-flex justify-content-between align-items-center bg-warning text-dark">
+    <h5><i class="bi bi-fuel-pump"></i> ODO Records Report</h5>
+    <div>
+      <span id="fuelDateRange" class="me-3"></span>
+      <button type="button" class="btn btn-sm btn-dark" id="exportFuelBtn">
+        <i class="bi bi-download"></i> Export CSV
+      </button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover" id="fuelTable">
+        <thead>
+          <tr>
+            <th>Date & Time</th>
+            <th>Plate Number</th>
+            <th>Status</th>
+            <th>Odometer Reading</th>
+            <th>Liters</th>
+            <th>Amount</th>
+            <th>Price/Liter</th>
+            <th>Created By</th>
+          </tr>
+        </thead>
+        <tbody id="fuelTableBody">
+          <!-- ODO data will be dynamically inserted here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Frequency Rate Results -->
+<div class="card mt-4" id="frequencyResults" style="display:none;">
+  <div class="card-header d-flex justify-content-between align-items-center bg-secondary text-white">
+    <h5><i class="bi bi-graph-up-arrow"></i> Delivery Frequency Rate Report</h5>
+    <div>
+      <span id="frequencyDateRange" class="me-3"></span>
+      <button type="button" class="btn btn-sm btn-light" id="exportFrequencyBtn">
+        <i class="bi bi-download"></i> Export CSV
+      </button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover" id="frequencyTable">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Area/Branch</th>
+            <th>Delivery Count</th>
+            <th>Delivery Dates</th>
+          </tr>
+        </thead>
+        <tbody id="frequencyTableBody">
+          <!-- Frequency data will be dynamically inserted here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- DIFOT Results -->
+<div class="card mt-4" id="difotResults" style="display:none;">
+  <div class="card-header d-flex justify-content-between align-items-center bg-danger text-white">
+    <h5><i class="bi bi-clock-history"></i> DIFOT Report</h5>
+    <div>
+      <span id="difotDateRange" class="me-3"></span>
+      <button type="button" class="btn btn-sm btn-light" id="exportDifotBtn">
+        <i class="bi bi-download"></i> Export CSV
+      </button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover" id="difotTable">
+        <thead>
+          <tr>
+            <th>Scheduled Date</th>
+            <th>Branch</th>
+            <th>Total Ordered Qty</th>
+            <th>Original Due Date</th>
+            <th>Total Delivered Qty</th>
+            <th>On Time</th>
+            <th>In Full</th>
+          </tr>
+        </thead>
+        <tbody id="difotTableBody">
+          <!-- DIFOT data will be dynamically inserted here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  const reportForm = document.getElementById('reportForm');
+  // Scheduled Report Form
+  const scheduledReportForm = document.getElementById('scheduledReportForm');
   const reportResults = document.getElementById('reportResults');
   const reportTableHead = document.getElementById('reportTableHead');
   const reportTableBody = document.getElementById('reportTableBody');
@@ -70,20 +406,83 @@ document.addEventListener('DOMContentLoaded', function() {
   const reportDateRange = document.getElementById('reportDateRange');
   const reportTitle = document.getElementById('reportTitle');
 
+  // Truck Utilization Form
+  const truckUtilForm = document.getElementById('truckUtilForm');
+  const truckResults = document.getElementById('truckResults');
+  const truckTableBody = document.getElementById('truckTableBody');
+  const exportTruckBtn = document.getElementById('exportTruckBtn');
+  const truckDateRange = document.getElementById('truckDateRange');
+
+  // Truck Fleet Utilization Form
+  const truckFleetUtilForm = document.getElementById('truckFleetUtilForm');
+  const fleetResults = document.getElementById('fleetResults');
+  const fleetTableBody = document.getElementById('fleetTableBody');
+  const exportFleetBtn = document.getElementById('exportFleetBtn');
+  const fleetDateRange = document.getElementById('fleetDateRange');
+
+  // Fuel Efficiency Form
+  const fuelEffForm = document.getElementById('fuelEffForm');
+  const fuelResults = document.getElementById('fuelResults');
+  const fuelTableBody = document.getElementById('fuelTableBody');
+  const exportFuelBtn = document.getElementById('exportFuelBtn');
+  const fuelDateRange = document.getElementById('fuelDateRange');
+  const fuelVehicleFilter = document.getElementById('fuelVehicleFilter');
+  const fuelStatusFilter = document.getElementById('fuelStatusFilter');
+
+  // Frequency Rate Form
+  const frequencyRateForm = document.getElementById('frequencyRateForm');
+  const frequencyResults = document.getElementById('frequencyResults');
+  const frequencyTableBody = document.getElementById('frequencyTableBody');
+  const exportFrequencyBtn = document.getElementById('exportFrequencyBtn');
+  const frequencyDateRange = document.getElementById('frequencyDateRange');
+
+  // DIFOT Form
+  const difotForm = document.getElementById('difotForm');
+  const difotResults = document.getElementById('difotResults');
+  const difotTableBody = document.getElementById('difotTableBody');
+  const exportDifotBtn = document.getElementById('exportDifotBtn');
+  const difotDateRange = document.getElementById('difotDateRange');
+
   // Set default date range to last 30 days
   const today = new Date();
   const thirtyDaysAgo = new Date(today);
   thirtyDaysAgo.setDate(today.getDate() - 30);
+  const defaultStart = thirtyDaysAgo.toISOString().split('T')[0];
+  const defaultEnd = today.toISOString().split('T')[0];
 
-  document.getElementById('startDate').value = thirtyDaysAgo.toISOString().split('T')[0];
-  document.getElementById('endDate').value = today.toISOString().split('T')[0];
+  document.getElementById('scheduledStartDate').value = defaultStart;
+  document.getElementById('scheduledEndDate').value = defaultEnd;
+  document.getElementById('truckStartDate').value = defaultStart;
+  document.getElementById('truckEndDate').value = defaultEnd;
+  document.getElementById('fleetStartDate').value = defaultStart;
+  document.getElementById('fleetEndDate').value = defaultEnd;
+  document.getElementById('fuelStartDate').value = defaultStart;
+  document.getElementById('fuelEndDate').value = defaultEnd;
+  document.getElementById('frequencyStartDate').value = defaultStart;
+  document.getElementById('frequencyEndDate').value = defaultEnd;
+  document.getElementById('difotStartDate').value = defaultStart;
+  document.getElementById('difotEndDate').value = defaultEnd;
 
-  reportForm.addEventListener('submit', function(e) {
+  // Load vehicles for fuel efficiency filter
+  fetch('/api/vehicles')
+    .then(response => response.json())
+    .then(vehicles => {
+      vehicles.forEach(vehicle => {
+        const option = document.createElement('option');
+        option.value = vehicle.plate_number;
+        option.textContent = vehicle.plate_number;
+        fuelVehicleFilter.appendChild(option);
+      });
+    })
+    .catch(error => console.error('Error loading vehicles:', error));
+
+  // Scheduled Report Form Submit
+  scheduledReportForm.addEventListener('submit', function(e) {
     e.preventDefault();
 
-    const reportType = document.getElementById('reportType').value;
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
+    const reportType = document.getElementById('scheduledReportType').value;
+    const startDate = document.getElementById('scheduledStartDate').value;
+    const endDate = document.getElementById('scheduledEndDate').value;
 
     // Show date range in the report header
     const start = new Date(startDate).toLocaleDateString();
@@ -91,7 +490,7 @@ document.addEventListener('DOMContentLoaded', function() {
     reportDateRange.textContent = `${start} - ${end}`;
 
     // Update report title based on type
-    const reportTypeText = document.getElementById('reportType').options[document.getElementById('reportType').selectedIndex].text;
+    const reportTypeText = document.getElementById('scheduledReportType').options[document.getElementById('scheduledReportType').selectedIndex].text;
     reportTitle.textContent = reportTypeText;
 
     // Fetch report data based on type
@@ -101,6 +500,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (data.success) {
           displayReport(data);
           exportBtn.style.display = 'inline-block';
+          truckResults.style.display = 'none';
         } else {
           alert('Error generating report: ' + data.message);
         }
@@ -111,12 +511,202 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   });
 
+  // Truck Utilization Form Submit
+  truckUtilForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const startDate = document.getElementById('truckStartDate').value;
+    const endDate = document.getElementById('truckEndDate').value;
+
+    // Show date range in the report header
+    const start = new Date(startDate).toLocaleDateString();
+    const end = new Date(endDate).toLocaleDateString();
+    truckDateRange.textContent = `${start} - ${end}`;
+
+    // Fetch truck load utilization data
+    fetch(`/truck_utilization?start_date=${startDate}&end_date=${endDate}`)
+      .then(response => response.json())
+      .then(data => {
+        displayTruckData(data);
+        reportResults.style.display = 'none';
+        fleetResults.style.display = 'none';
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while fetching truck utilization data');
+      });
+  });
+
+  // Truck Fleet Utilization Form Submit
+  truckFleetUtilForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const startDate = document.getElementById('fleetStartDate').value;
+    const endDate = document.getElementById('fleetEndDate').value;
+
+    // Show date range in the report header
+    const start = new Date(startDate).toLocaleDateString();
+    const end = new Date(endDate).toLocaleDateString();
+    fleetDateRange.textContent = `${start} - ${end}`;
+
+    // Fetch truck fleet utilization data
+    fetch(`/truck_fleet_utilization?start_date=${startDate}&end_date=${endDate}`)
+      .then(response => response.json())
+      .then(data => {
+        displayFleetData(data);
+        reportResults.style.display = 'none';
+        truckResults.style.display = 'none';
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while fetching truck fleet utilization data');
+      });
+  });
+
+  // Fuel Efficiency Form Submit
+  fuelEffForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const startDate = document.getElementById('fuelStartDate').value;
+    const endDate = document.getElementById('fuelEndDate').value;
+    const vehicle = document.getElementById('fuelVehicleFilter').value;
+    const status = document.getElementById('fuelStatusFilter').value;
+
+    // Show date range in the report header
+    const start = new Date(startDate).toLocaleDateString();
+    const end = new Date(endDate).toLocaleDateString();
+    fuelDateRange.textContent = `${start} - ${end}`;
+
+    // Build query parameters
+    let url = `/fuel_efficiency_data?start_date=${startDate}&end_date=${endDate}`;
+    if (vehicle) url += `&vehicle=${vehicle}`;
+    if (status) url += `&status=${status}`;
+
+    // Fetch ODO data
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        displayFuelData(data);
+        reportResults.style.display = 'none';
+        truckResults.style.display = 'none';
+        fleetResults.style.display = 'none';
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while fetching ODO data');
+      });
+  });
+
+  // Frequency Rate Form Submit
+  frequencyRateForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const startDate = document.getElementById('frequencyStartDate').value;
+    const endDate = document.getElementById('frequencyEndDate').value;
+
+    // Show date range in the report header
+    const start = new Date(startDate).toLocaleDateString();
+    const end = new Date(endDate).toLocaleDateString();
+    frequencyDateRange.textContent = `${start} - ${end}`;
+
+    // Fetch frequency rate data
+    fetch(`/frequency_rate?start_date=${startDate}&end_date=${endDate}`)
+      .then(response => response.json())
+      .then(data => {
+        displayFrequencyData(data);
+        reportResults.style.display = 'none';
+        truckResults.style.display = 'none';
+        fleetResults.style.display = 'none';
+        fuelResults.style.display = 'none';
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while fetching frequency rate data');
+      });
+  });
+
+  // DIFOT Form Submit
+  difotForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const startDate = document.getElementById('difotStartDate').value;
+    const endDate = document.getElementById('difotEndDate').value;
+
+    // Show date range in the report header
+    const start = new Date(startDate).toLocaleDateString();
+    const end = new Date(endDate).toLocaleDateString();
+    difotDateRange.textContent = `${start} - ${end}`;
+
+    // Fetch DIFOT data
+    fetch(`/difot_data?start_date=${startDate}&end_date=${endDate}`)
+      .then(response => response.json())
+      .then(data => {
+        displayDifotData(data);
+        reportResults.style.display = 'none';
+        truckResults.style.display = 'none';
+        fleetResults.style.display = 'none';
+        fuelResults.style.display = 'none';
+        frequencyResults.style.display = 'none';
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while fetching DIFOT data');
+      });
+  });
+
+  // Export Scheduled Report
   exportBtn.addEventListener('click', function() {
-    const reportType = document.getElementById('reportType').value;
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
+    const reportType = document.getElementById('scheduledReportType').value;
+    const startDate = document.getElementById('scheduledStartDate').value;
+    const endDate = document.getElementById('scheduledEndDate').value;
 
     window.location.href = `/export_report?report_type=${reportType}&start_date=${startDate}&end_date=${endDate}`;
+  });
+
+  // Export Truck Utilization
+  exportTruckBtn.addEventListener('click', function() {
+    const startDate = document.getElementById('truckStartDate').value;
+    const endDate = document.getElementById('truckEndDate').value;
+
+    window.location.href = `/export_truck_utilization?start_date=${startDate}&end_date=${endDate}`;
+  });
+
+  // Export Truck Fleet Utilization
+  exportFleetBtn.addEventListener('click', function() {
+    const startDate = document.getElementById('fleetStartDate').value;
+    const endDate = document.getElementById('fleetEndDate').value;
+
+    window.location.href = `/export_truck_fleet_utilization?start_date=${startDate}&end_date=${endDate}`;
+  });
+
+  // Export Fuel Efficiency
+  exportFuelBtn.addEventListener('click', function() {
+    const startDate = document.getElementById('fuelStartDate').value;
+    const endDate = document.getElementById('fuelEndDate').value;
+    const vehicle = document.getElementById('fuelVehicleFilter').value;
+    const status = document.getElementById('fuelStatusFilter').value;
+
+    let url = `/export_fuel_efficiency?start_date=${startDate}&end_date=${endDate}`;
+    if (vehicle) url += `&vehicle=${vehicle}`;
+    if (status) url += `&status=${status}`;
+
+    window.location.href = url;
+  });
+
+  // Export Frequency Rate
+  exportFrequencyBtn.addEventListener('click', function() {
+    const startDate = document.getElementById('frequencyStartDate').value;
+    const endDate = document.getElementById('frequencyEndDate').value;
+
+    window.location.href = `/export_frequency_rate?start_date=${startDate}&end_date=${endDate}`;
+  });
+
+  // Export DIFOT
+  exportDifotBtn.addEventListener('click', function() {
+    const startDate = document.getElementById('difotStartDate').value;
+    const endDate = document.getElementById('difotEndDate').value;
+
+    window.location.href = `/export_difot?start_date=${startDate}&end_date=${endDate}`;
   });
 
   function displayReport(data) {
@@ -144,6 +734,184 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     reportResults.style.display = 'block';
+  }
+
+  function displayTruckData(data) {
+    truckTableBody.innerHTML = '';
+
+    if (data.length === 0) {
+      truckTableBody.innerHTML = '<tr><td colspan="5" class="text-center">No data found for the selected date range</td></tr>';
+    } else {
+      data.forEach(row => {
+        const tr = document.createElement('tr');
+
+        // Calculate utilization percentage
+        const utilization = row.capacity > 0 ? (row.actual / row.capacity * 100).toFixed(1) : '0.0';
+        const utilizationClass = utilization >= 80 ? 'success' : utilization >= 50 ? 'warning' : 'danger';
+        const actualFormatted = parseFloat(row.actual || 0).toFixed(3);
+
+        tr.innerHTML = `
+          <td>${row.delivery_schedule}</td>
+          <td>${row.plate_number}</td>
+          <td>${row.capacity || 'N/A'}</td>
+          <td>${actualFormatted}</td>
+          <td><span class="badge bg-${utilizationClass}">${utilization}%</span></td>
+        `;
+        truckTableBody.appendChild(tr);
+      });
+    }
+
+    truckResults.style.display = 'block';
+  }
+
+  function displayFleetData(data) {
+    fleetTableBody.innerHTML = '';
+
+    if (data.length === 0) {
+      fleetTableBody.innerHTML = '<tr><td colspan="4" class="text-center">No data found for the selected date range</td></tr>';
+    } else {
+      data.forEach(row => {
+        const tr = document.createElement('tr');
+
+        // Calculate utilization percentage
+        const utilization = row.active_trucks > 0 ? (row.trucks_used / row.active_trucks * 100).toFixed(1) : '0.0';
+        const utilizationClass = utilization >= 80 ? 'success' : utilization >= 50 ? 'warning' : 'danger';
+
+        tr.innerHTML = `
+          <td>${row.date}</td>
+          <td><span class="badge bg-primary">${row.trucks_used}</span></td>
+          <td><span class="badge bg-info">${row.active_trucks}</span></td>
+          <td><span class="badge bg-${utilizationClass}">${utilization}%</span></td>
+        `;
+        fleetTableBody.appendChild(tr);
+      });
+    }
+
+    fleetResults.style.display = 'block';
+  }
+
+  function displayFuelData(data) {
+    fuelTableBody.innerHTML = '';
+
+    if (data.length === 0) {
+      fuelTableBody.innerHTML = '<tr><td colspan="8" class="text-center">No ODO records found for the selected criteria</td></tr>';
+    } else {
+      data.forEach(row => {
+        const tr = document.createElement('tr');
+
+        // Format the datetime
+        const datetime = new Date(row.datetime);
+        const formattedDateTime = datetime.toLocaleString();
+
+        // Format numbers
+        const odoReading = parseFloat(row.odometer_reading || 0).toFixed(1);
+        const liters = row.litters ? parseFloat(row.litters).toFixed(2) : 'N/A';
+        const amount = row.amount ? parseFloat(row.amount).toFixed(2) : 'N/A';
+        const pricePerLiter = row.price_per_litter ? parseFloat(row.price_per_litter).toFixed(2) : 'N/A';
+
+        // Status badge color
+        const statusColors = {
+          'start odo': 'primary',
+          'refill odo': 'success',
+          'end odo': 'danger'
+        };
+        const statusColor = statusColors[row.status] || 'secondary';
+
+        tr.innerHTML = `
+          <td>${formattedDateTime}</td>
+          <td>${row.plate_number}</td>
+          <td><span class="badge bg-${statusColor}">${row.status.replace('_', ' ').toUpperCase()}</span></td>
+          <td>${odoReading}</td>
+          <td>${liters}</td>
+          <td>${amount}</td>
+          <td>${pricePerLiter}</td>
+          <td>${row.created_by}</td>
+        `;
+        fuelTableBody.appendChild(tr);
+      });
+    }
+
+    fuelResults.style.display = 'block';
+  }
+
+  function displayFrequencyData(data) {
+    frequencyTableBody.innerHTML = '';
+
+    if (data.length === 0) {
+      frequencyTableBody.innerHTML = '<tr><td colspan="4" class="text-center">No delivery data found for the selected date range</td></tr>';
+    } else {
+      data.forEach((row, index) => {
+        const tr = document.createElement('tr');
+
+        // Rank badge color based on count
+        const rankColors = ['warning', 'info', 'success'];
+        const rankColor = rankColors[index] || 'secondary';
+        const count = row.delivery_count;
+        const areas = row.areas;
+
+        tr.innerHTML = `
+          <td><span class="badge bg-${rankColor}">#${index + 1}</span></td>
+          <td><strong>${row.area}</strong></td>
+          <td><span class="badge bg-primary fs-6">${count}</span></td>
+          <td><small class="text-muted">${areas.join(', ')}</small></td>
+        `;
+        frequencyTableBody.appendChild(tr);
+      });
+    }
+
+    frequencyResults.style.display = 'block';
+  }
+
+  function displayDifotData(data) {
+    difotTableBody.innerHTML = '';
+
+    if (data.length === 0) {
+      difotTableBody.innerHTML = '<tr><td colspan="7" class="text-center">No DIFOT data found for the selected date range</td></tr>';
+    } else {
+      data.forEach(row => {
+        const tr = document.createElement('tr');
+
+        // Calculate On Time status (scheduled date - original due date)
+        // On time if scheduled date <= due date, or shows days late
+        let onTimeHtml = '';
+        if (row.days_late !== null) {
+          if (row.days_late <= 0) {
+            const daysEarly = Math.abs(row.days_late);
+            onTimeHtml = `<span class="badge bg-success">${daysEarly === 0 ? 'On Time' : daysEarly + ' Day(s) Early'}</span>`;
+          } else {
+            onTimeHtml = `<span class="badge bg-danger">${row.days_late} Day(s) Late</span>`;
+          }
+        } else {
+          onTimeHtml = '<span class="badge bg-secondary">N/A</span>';
+        }
+
+        // Calculate In Full status (total_delivered_qty - total_ordered_qty)
+        // In full if delivered >= ordered, or shows shortage
+        let inFullHtml = '';
+        if (row.qty_diff !== null) {
+          if (row.qty_diff >= 0) {
+            inFullHtml = `<span class="badge bg-success">In Full${row.qty_diff > 0 ? ' (+' + row.qty_diff + ')' : ''}</span>`;
+          } else {
+            inFullHtml = `<span class="badge bg-warning">Shortage (${Math.abs(row.qty_diff)})</span>`;
+          }
+        } else {
+          inFullHtml = '<span class="badge bg-secondary">N/A</span>';
+        }
+
+        tr.innerHTML = `
+          <td>${row.scheduled_date}</td>
+          <td>${row.branch_name_v2}</td>
+          <td>${row.total_ordered_qty}</td>
+          <td>${row.original_due_date || 'N/A'}</td>
+          <td>${row.total_delivered_qty}</td>
+          <td>${onTimeHtml}</td>
+          <td>${inFullHtml}</td>
+        `;
+        difotTableBody.appendChild(tr);
+      });
+    }
+
+    difotResults.style.display = 'block';
   }
 });
 </script>

@@ -58,6 +58,9 @@ class Data(db.Model):
 class Schedule(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     delivery_schedule = db.Column(db.Date, nullable=False)
+    plate_number = db.Column(db.String(50), nullable=True)
+    capacity = db.Column(db.Float, nullable=True)
+    actual = db.Column(db.Float, nullable=True)
 
     def __repr__(self):
         return f'<Schedule {self.id} - {self.delivery_schedule}>'
@@ -102,6 +105,7 @@ class TripDetail(db.Model):
     # Aggregated values
     total_cbm = db.Column(db.Float, nullable=False, default=0.0)  # Sum of all CBM for this document
     total_ordered_qty = db.Column(db.Integer, nullable=False, default=0)  # Sum of ordered quantities
+    total_delivered_qty = db.Column(db.Integer, nullable=False, default=0)  # Sum of delivered quantities
 
     trip_id = db.Column(db.Integer, db.ForeignKey('trip.id'), nullable=False)
     trip = db.relationship('Trip', backref=db.backref('details', lazy=True))
@@ -116,6 +120,7 @@ class TripDetail(db.Model):
     reason = db.Column(db.Text)  # Reason for arrival/departure notes
 
     delivery_type = db.Column(db.String(100), nullable=True)  # Delivery type
+    original_due_date = db.Column(db.Date, nullable=True)  # Original due date from Data
 
     def __repr__(self):
         return f'<TripDetail {self.id} - Branch {self.branch_name_v2} - Trip {self.trip_id}>'
@@ -171,4 +176,14 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
     def __repr__(self):
-        return f'<User {self.email} - {self.position}>' 
+        return f'<User {self.email} - {self.position}>'
+
+class DailyVehicleCount(db.Model):
+    __tablename__ = 'daily_vehicle_count'
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, unique=True)
+    qty = db.Column(db.Integer, nullable=False, default=0)  # Count of active vehicles
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now)
+
+    def __repr__(self):
+        return f'<DailyVehicleCount {self.date} - {self.qty} vehicles>' 
