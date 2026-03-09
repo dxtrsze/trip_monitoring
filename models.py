@@ -8,6 +8,8 @@ db = SQLAlchemy()
 class Vehicle(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     plate_number = db.Column(db.String(50), unique=True, nullable=False)
+    status = db.Column(db.String(50), nullable=False, default='Active')  # 'Active' or 'Inactive'
+    capacity = db.Column(db.Float, nullable=True)  # Vehicle capacity in CBM
 
     def __repr__(self):
         return f'<Vehicle {self.plate_number}>'
@@ -48,6 +50,7 @@ class Data(db.Model):
     customer_vendor_code = db.Column(db.String(50))
     customer_vendor_name = db.Column(db.String(100))
     status = db.Column(db.String(50)) # "Not Scheduled", "Scheduled", "Cancelled"
+    delivery_type = db.Column(db.String(100), nullable=True)  # Delivery type
 
     def __repr__(self):
         return f'<Data {self.document_number}>'
@@ -111,6 +114,8 @@ class TripDetail(db.Model):
     arrive = db.Column(db.DateTime)  # Arrival date and time
     departure = db.Column(db.DateTime)  # Departure date and time
     reason = db.Column(db.Text)  # Reason for arrival/departure notes
+
+    delivery_type = db.Column(db.String(100), nullable=True)  # Delivery type
 
     def __repr__(self):
         return f'<TripDetail {self.id} - Branch {self.branch_name_v2} - Trip {self.trip_id}>'

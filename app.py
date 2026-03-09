@@ -176,7 +176,8 @@ def download_csv_template():
         "ISMS SO#",
         "CBM",
         "Customer/Vendor Code",
-        "Customer/Vendor Name"
+        "Customer/Vendor Name",
+        "Delivery Type"
     ])
 
     # Write one sample row for guidance (based on your data)
@@ -200,6 +201,7 @@ def download_csv_template():
         "916253958",
         "202509-0020594",
         "0.09",
+        "",
         "",
         ""
     ])
@@ -258,7 +260,8 @@ def upload_data():
                 "From Warehouse Code", "To Warehouse", "Remarks",
                 "Special Instruction", "Branch Name", "Branch Name v2",
                 "Document Status", "Due Date", "User_Code", "PO Number",
-                "ISMS SO#", "CBM", "Customer/Vendor Code", "Customer/Vendor Name"
+                "ISMS SO#", "CBM", "Customer/Vendor Code", "Customer/Vendor Name",
+                "Delivery Type"
             }
 
             if set(csv_reader.fieldnames) != expected_headers:
@@ -309,6 +312,7 @@ def upload_data():
                         total_cbm = round(cbm * ordered_qty, 2),
                         customer_vendor_code=clean(row["Customer/Vendor Code"]),
                         customer_vendor_name=clean(row["Customer/Vendor Name"]),
+                        delivery_type=clean(row["Delivery Type"]),
                         status="Not Scheduled"
                     )
 
