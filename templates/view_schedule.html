@@ -22,11 +22,18 @@
   <div class="card-body">
     {% if schedule.trips %}
       {% for trip in schedule.trips %}
-      <div class="border rounded p-3 mb-3">
-        <h6>
-          Trip #{{ trip.trip_number }} 
-          <span class="badge bg-secondary">CBM: {{ "%.2f"|format(trip.total_cbm) }}</span>
-        </h6>
+      <div class="border rounded p-3 mb-3" data-trip-id="{{ trip.id }}" data-schedule-id="{{ schedule.id }}" data-delivery-date="{{ schedule.delivery_schedule.strftime('%Y-%m-%d') }}">
+        <div class="d-flex justify-content-between align-items-start">
+          <h6 class="mb-0">
+            Trip #{{ trip.trip_number }}
+            <span class="badge bg-secondary">CBM: {{ "%.2f"|format(trip.total_cbm) }}</span>
+          </h6>
+          {% if current_user.position == 'admin' %}
+          <button type="button" class="btn btn-sm btn-warning btn-edit-trip" data-trip-id="{{ trip.id }}" data-schedule-id="{{ schedule.id }}" data-delivery-date="{{ schedule.delivery_schedule.strftime('%Y-%m-%d') }}">
+            Edit Trip
+          </button>
+          {% endif %}
+        </div>
         <p>
           <strong>Vehicle:</strong> {{ trip.vehicle.plate_number }}<br>
           <strong>Drivers:</strong>
@@ -106,7 +113,9 @@
                   <div class="btn-group btn-group-sm" role="group">
                     <button type="button" class="btn btn-sm btn-success btn-record-arrival" {% if detail.arrive %}disabled{% endif %}>In</button>
                     <button type="button" class="btn btn-sm btn-primary btn-record-departure" {% if detail.departure %}disabled{% endif %}>Out</button>
+                    {% if current_user.position == 'admin' %}
                     <button type="button" class="btn btn-sm btn-danger btn-cancel-trip">Cancel</button>
+                    {% endif %}
                   </div>
                   {% elif detail.status == "Not Scheduled" %}
                   <span class="badge bg-secondary">Cancelled</span>
@@ -131,7 +140,9 @@
                     <option value="NO DEFECTIVE UNIT TAG / POR" {% if detail.reason == 'NO DEFECTIVE UNIT TAG / POR' %}selected{% endif %}>NO DEFECTIVE UNIT TAG / POR</option>
                     <option value="NO PERMIT" {% if detail.reason == 'NO PERMIT' %}selected{% endif %}>NO PERMIT</option>
                     <option value="NO PS / RECEIVING PERSONNEL" {% if detail.reason == 'NO PS / RECEIVING PERSONNEL' %}selected{% endif %}>NO PS / RECEIVING PERSONNEL</option>
+                    <option value="NO RECEIVING RECEIPT ATTACHMENT" {% if detail.reason == 'NO RECEIVING RECEIPT ATTACHMENT' %}selected{% endif %}>NO RECEIVING RECEIPT ATTACHMENT</option>
                     <option value="NO SCHEDULE" {% if detail.reason == 'NO SCHEDULE' %}selected{% endif %}>NO SCHEDULE</option>
+                    <option value="NO STAMP" {% if detail.reason == 'NO STAMP' %}selected{% endif %}>NO STAMP</option>
                     <option value="NO SKU" {% if detail.reason == 'NO SKU' %}selected{% endif %}>NO SKU</option>
                     <option value="OVERSTOCK" {% if detail.reason == 'OVERSTOCK' %}selected{% endif %}>OVERSTOCK</option>
                     <option value="P.O. CONCERN" {% if detail.reason == 'P.O. CONCERN' %}selected{% endif %}>P.O. CONCERN</option>
@@ -218,6 +229,44 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         <button type="button" class="btn btn-danger" id="confirmCancel">Confirm Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Trip Modal -->
+<div class="modal fade" id="editTripModal" tabindex="-1" aria-labelledby="editTripModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editTripModalLabel">Edit Trip - Add Shipments</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="editAreaFilter" class="form-label">Filter by Area</label>
+          <select class="form-select" id="editAreaFilter">
+            <option value="">All Areas</option>
+          </select>
+        </div>
+        <div class="card">
+          <div class="card-header">Available Shipments (<span id="editShipmentCount">0</span> <span id="editTotalCountDisplay"></span>)</div>
+          <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+            <div id="editShipmentsList"></div>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div class="border rounded p-3">
+            <h6>Selected Shipments</h6>
+            <div id="editSelectedShipments" style="max-height: 200px; overflow-y: auto;">
+              <p class="text-muted mb-0">No shipments selected</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="confirmAddShipments">Add Selected Shipments</button>
       </div>
     </div>
   </div>
@@ -474,6 +523,233 @@ function recordOdo(plateNumber, status, tripId) {
   .catch(error => {
     console.error('Error:', error);
     alert('An error occurred while recording odometer');
+  });
+}
+
+// Edit Trip Functionality
+let editTripId = null;
+let editScheduleId = null;
+let editDeliveryDate = null;
+let editShipments = [];
+let editAllShipments = [];
+let editSelectedShipments = [];
+
+// Load areas when page loads for edit modal
+document.addEventListener('DOMContentLoaded', function() {
+  // Event delegation for Edit Trip buttons
+  document.querySelectorAll('.btn-edit-trip').forEach(button => {
+    button.addEventListener('click', function() {
+      editTripId = this.dataset.tripId;
+      editScheduleId = this.dataset.scheduleId;
+      editDeliveryDate = this.dataset.deliveryDate;
+      openEditTripModal();
+    });
+  });
+
+  // Filter shipments when area changes in edit modal
+  document.getElementById('editAreaFilter').addEventListener('change', function() {
+    filterEditShipments();
+  });
+
+  // Confirm add shipments button
+  document.getElementById('confirmAddShipments').addEventListener('click', function() {
+    addSelectedShipmentsToTrip();
+  });
+});
+
+function openEditTripModal() {
+  // Reset modal state
+  editSelectedShipments = [];
+  editAllShipments = [];
+  editShipments = [];
+
+  // Load areas for the filter
+  fetch('/api/areas')
+    .then(res => res.json())
+    .then(areas => {
+      const areaFilter = document.getElementById('editAreaFilter');
+      areaFilter.innerHTML = '<option value="">All Areas</option>';
+      areas.forEach(area => {
+        const option = document.createElement('option');
+        option.value = area;
+        option.textContent = area;
+        areaFilter.appendChild(option);
+      });
+    });
+
+  // Load available shipments for the delivery date
+  fetch(`/api/available_for_edit?delivery_date=${editDeliveryDate}&trip_id=${editTripId}`)
+    .then(res => res.json())
+    .then(data => {
+      editAllShipments = data;
+      filterEditShipments();
+      renderSelectedShipments();
+
+      // Show modal
+      const editModal = new bootstrap.Modal(document.getElementById('editTripModal'));
+      editModal.show();
+    })
+    .catch(error => {
+      console.error('Error loading shipments:', error);
+      alert('Error loading available shipments');
+    });
+}
+
+function filterEditShipments() {
+  const selectedArea = document.getElementById('editAreaFilter').value;
+
+  if (!selectedArea) {
+    editShipments = editAllShipments;
+  } else {
+    editShipments = editAllShipments.filter(item => item.area === selectedArea);
+  }
+
+  renderEditShipments();
+}
+
+function renderEditShipments() {
+  const container = document.getElementById('editShipmentsList');
+  const countEl = document.getElementById('editShipmentCount');
+  const totalDisplayEl = document.getElementById('editTotalCountDisplay');
+
+  countEl.textContent = editShipments.length;
+
+  if (editAllShipments.length > 0 && editShipments.length !== editAllShipments.length) {
+    totalDisplayEl.textContent = `/ ${editAllShipments.length} total`;
+  } else {
+    totalDisplayEl.textContent = '';
+  }
+
+  if (editShipments.length === 0) {
+    if (editAllShipments.length > 0) {
+      container.innerHTML = '<p class="text-muted">No shipments found for the selected area filter.</p>';
+    } else {
+      container.innerHTML = '<p class="text-muted">No available shipments found.</p>';
+    }
+    return;
+  }
+
+  let html = `<div class="table-responsive"><table class="table table-sm">
+    <thead><tr>
+      <th>Select</th>
+      <th>Doc #</th>
+      <th>Branch</th>
+      <th>Area</th>
+      <th>Due Date</th>
+      <th>Total CBM</th>
+    </tr></thead><tbody>`;
+
+  editShipments.forEach(item => {
+    const isSelected = editSelectedShipments.some(s => s.data_ids[0] === item.data_ids[0]);
+    html += `
+      <tr>
+        <td><input type="checkbox" class="edit-shipment-checkbox" data-ids="${item.data_ids.join(',')}" data-cbm="${item.total_cbm}" data-branch="${item.branch}" data-doc="${item.document_number}" ${isSelected ? 'checked' : ''}></td>
+        <td>${item.document_number}</td>
+        <td>${item.branch}</td>
+        <td>${item.area}</td>
+        <td>${item.due_date}</td>
+        <td>${item.total_cbm.toFixed(2)}</td>
+      </tr>`;
+  });
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+
+  // Add event listeners to checkboxes
+  document.querySelectorAll('.edit-shipment-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      const ids = this.dataset.ids.split(',');
+      const cbm = parseFloat(this.dataset.cbm);
+      const branch = this.dataset.branch;
+      const doc = this.dataset.document_number;
+
+      if (this.checked) {
+        editSelectedShipments.push({
+          data_ids: ids,
+          total_cbm: cbm,
+          branch: branch,
+          document_number: doc
+        });
+      } else {
+        editSelectedShipments = editSelectedShipments.filter(s => s.data_ids[0] !== ids[0]);
+      }
+      renderSelectedShipments();
+    });
+  });
+}
+
+function renderSelectedShipments() {
+  const container = document.getElementById('editSelectedShipments');
+
+  if (editSelectedShipments.length === 0) {
+    container.innerHTML = '<p class="text-muted mb-0">No shipments selected</p>';
+    return;
+  }
+
+  let html = '<div class="list-group">';
+  editSelectedShipments.forEach(item => {
+    html += `
+      <div class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+          <strong>${item.document_number}</strong> - ${item.branch}
+          <br><small class="text-muted">CBM: ${item.total_cbm.toFixed(2)}</small>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeEditSelection('${item.data_ids[0]}')">×</button>
+      </div>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function removeEditSelection(dataId) {
+  editSelectedShipments = editSelectedShipments.filter(s => s.data_ids[0] !== dataId);
+
+  // Uncheck the checkbox
+  const checkbox = document.querySelector(`.edit-shipment-checkbox[data-ids*="${dataId}"]`);
+  if (checkbox) {
+    checkbox.checked = false;
+  }
+
+  renderSelectedShipments();
+}
+
+function addSelectedShipmentsToTrip() {
+  if (editSelectedShipments.length === 0) {
+    alert('Please select at least one shipment');
+    return;
+  }
+
+  // Prepare data - flatten all data_ids
+  const allDataIds = [];
+  editSelectedShipments.forEach(shipment => {
+    allDataIds.push(...shipment.data_ids);
+  });
+
+  fetch('/add_shipments_to_trip', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      trip_id: editTripId,
+      schedule_id: editScheduleId,
+      data_ids: allDataIds
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Close modal
+      const editModal = bootstrap.Modal.getInstance(document.getElementById('editTripModal'));
+      editModal.hide();
+      // Reload page
+      location.reload();
+    } else {
+      alert('Error adding shipments: ' + data.message);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('An error occurred while adding shipments');
   });
 }
 </script>

@@ -49,8 +49,9 @@ class Data(db.Model):
     total_cbm = db.Column(db.Float, default=0.0)  # should be computed (cbm * ordered_qty)
     customer_vendor_code = db.Column(db.String(50))
     customer_vendor_name = db.Column(db.String(100))
-    status = db.Column(db.String(50)) # "Not Scheduled", "Scheduled", "Cancelled"
+    status = db.Column(db.String(50)) # "Not Scheduled", "Scheduled", "Cancelled", "Deleted"
     delivery_type = db.Column(db.String(100), nullable=True)  # Delivery type
+    delete_remarks = db.Column(db.String(255), nullable=True)  # Reason for deletion
 
     def __repr__(self):
         return f'<Data {self.document_number}>'
@@ -218,6 +219,7 @@ class Backload(db.Model):
     status = db.Column(db.String(50))  # "Not Scheduled", "Scheduled", "Cancelled"
     delivery_type = db.Column(db.String(100), nullable=True)
     backload_qty = db.Column(db.Integer, nullable=False, default=0)  # Additional column for backload quantity
+    backload_remarks = db.Column(db.String(255), nullable=True)  # Reason for backload
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.now)  # Track when backload was created
 
     def __repr__(self):

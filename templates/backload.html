@@ -103,6 +103,7 @@
             <th>Ordered Qty</th>
             <th>Backload Qty</th>
             <th>Branch</th>
+            <th>Backload Remarks</th>
           </tr>
         </thead>
         <tbody id="backloadHistoryBody">
@@ -144,6 +145,26 @@
             <label for="dataModalBackloadQty" class="form-label">Backload Qty</label>
             <input type="number" class="form-control" id="dataModalBackloadQty" name="backload_qty" required min="1" step="1">
             <div class="form-text">Enter the quantity to backload.</div>
+          </div>
+          <div class="mb-3">
+            <label for="dataModalBackloadRemarks" class="form-label">Backload Remarks</label>
+            <select class="form-select" id="dataModalBackloadRemarks" name="backload_remarks" required>
+              <option value="" selected disabled>Select a reason</option>
+              <option value="BARCODE CONCERN">BARCODE CONCERN</option>
+              <option value="CUT-OFF CONCERN">CUT-OFF CONCERN</option>
+              <option value="DISPATCHING CONCERN">DISPATCHING CONCERN</option>
+              <option value="DOCUMENT CONCERN">DOCUMENT CONCERN</option>
+              <option value="MANPOWER CONCERN">MANPOWER CONCERN</option>
+              <option value="ORDERING CONCERN">ORDERING CONCERN</option>
+              <option value="P.O. CONCERN">P.O. CONCERN</option>
+              <option value="PREPARATION CONCERN">PREPARATION CONCERN</option>
+              <option value="RELEASING/RECEIVING CONCERN">RELEASING/RECEIVING CONCERN</option>
+              <option value="STORE RENOVATION">STORE RENOVATION</option>
+              <option value="UNIT CONCERN">UNIT CONCERN</option>
+              <option value="VEHICLE CONCERN">VEHICLE CONCERN</option>
+              <option value="WEATHER CONDITION">WEATHER CONDITION</option>
+            </select>
+            <div class="form-text">Select the reason for backload.</div>
           </div>
         </div>
         <div class="modal-footer">
@@ -315,6 +336,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <td>${backload.ordered_qty || 0}</td>
         <td><span class="badge bg-warning text-dark">${backload.backload_qty || 0}</span></td>
         <td>${backload.branch_name_v2 || backload.branch_name || 'N/A'}</td>
+        <td><span class="badge bg-info text-white">${backload.backload_remarks || 'N/A'}</span></td>
       `;
       backloadHistoryBody.appendChild(row);
     });
@@ -355,6 +377,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('dataModalOrderedQty').value = record.ordered_qty || 0;
         document.getElementById('dataModalDeliveredQty').value = record.delivered_qty || 0;
         document.getElementById('dataModalBackloadQty').value = '';
+        document.getElementById('dataModalBackloadRemarks').value = '';
 
         dataBackloadModal.show();
       })
@@ -370,6 +393,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const recordId = document.getElementById('dataModalRecordId').value;
     const backloadQty = parseInt(document.getElementById('dataModalBackloadQty').value);
+    const backloadRemarks = document.getElementById('dataModalBackloadRemarks').value;
     const orderedQty = parseInt(document.getElementById('dataModalOrderedQty').value);
     const deliveredQty = parseInt(document.getElementById('dataModalDeliveredQty').value);
 
@@ -384,7 +408,12 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    if (!confirm(`Are you sure you want to backload ${backloadQty} units?\n\nItem Number: ${document.getElementById('dataModalItemNumber').value}\nOrdered Qty: ${orderedQty}\nDelivered Qty: ${deliveredQty}\nBackload Qty: ${backloadQty}`)) {
+    if (!backloadRemarks) {
+      alert('Error: Please select a backload remark/reason.');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to backload ${backloadQty} units?\n\nItem Number: ${document.getElementById('dataModalItemNumber').value}\nOrdered Qty: ${orderedQty}\nDelivered Qty: ${deliveredQty}\nBackload Qty: ${backloadQty}\nReason: ${backloadRemarks}`)) {
       return;
     }
 
@@ -396,7 +425,8 @@ document.addEventListener('DOMContentLoaded', function() {
       },
       body: JSON.stringify({
         record_id: recordId,
-        backload_qty: backloadQty
+        backload_qty: backloadQty,
+        backload_remarks: backloadRemarks
       })
     })
     .then(response => response.json())

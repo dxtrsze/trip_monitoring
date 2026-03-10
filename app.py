@@ -409,6 +409,44 @@ def edit_data(id):
     # GET request: render edit form
     return render_template('edit_data.html', data=data)
 
+
+@app.route('/soft_delete_data', methods=['POST'])
+@login_required
+def soft_delete_data():
+    """Soft delete a data record by setting status to 'Deleted'"""
+    if current_user.position != 'admin':
+        return jsonify({'success': False, 'message': 'Access denied. Admin privileges required.'}), 403
+
+    try:
+        data = request.get_json()
+        data_id = data.get('data_id')
+        delete_remarks = data.get('delete_remarks')
+
+        if not data_id:
+            return jsonify({'success': False, 'message': 'Data ID is required'}), 400
+
+        if not delete_remarks:
+            return jsonify({'success': False, 'message': 'Delete remarks are required'}), 400
+
+        # Get the data record
+        data_record = Data.query.get_or_404(data_id)
+
+        # Soft delete by updating status
+        data_record.status = "Deleted"
+        data_record.delete_remarks = delete_remarks
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'Record {data_record.document_number} has been marked as deleted'
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error deleting record: {str(e)}'}), 500
+
+
 # Resource management routes
 @app.route('/vehicles')
 @login_required
@@ -1225,6 +1263,162 @@ def get_areas():
     """Get all unique areas from clusters"""
     areas = db.session.query(Cluster.area).filter(Cluster.area.isnot(None)).filter(Cluster.area != '').distinct().order_by(Cluster.area).all()
     return jsonify([area[0] for area in areas])
+
+
+@app.route('/api/available_for_edit')
+def api_available_for_edit():
+    """Get available shipments for editing a trip (Not Scheduled, not assigned to any trip in the schedule)"""
+    delivery_date_str = request.args.get('delivery_date')
+    trip_id = request.args.get('trip_id')
+
+    if not delivery_date_str or not trip_id:
+        return jsonify([])
+
+    delivery_date = datetime.strptime(delivery_date_str, '%Y-%m-%d').date()
+    trip = db.session.get(Trip, trip_id)
+    if not trip:
+        return jsonify([])
+
+    schedule_id = trip.schedule_id
+
+    # Get all data_ids already assigned to any trip in this schedule
+    existing_trip_details = TripDetail.query.join(Trip).filter(Trip.schedule_id == schedule_id).all()
+    assigned_data_ids = set()
+    for detail in existing_trip_details:
+        if detail.data_ids:
+            assigned_data_ids.update(detail.data_ids.split(','))
+
+    # Get all "Not Scheduled" data with due_date == delivery date
+    subq = Data.query.filter(
+        Data.status == 'Not Scheduled',
+        Data.due_date == delivery_date
+    ).subquery()
+
+    # Group by document_number and aggregate
+    results = db.session.query(
+        subq.c.document_number,
+        func.sum(subq.c.total_cbm).label('total_cbm'),
+        func.sum(subq.c.ordered_qty).label('ordered_qty'),
+        func.min(subq.c.branch_name).label('branch_name'),
+        func.min(subq.c.branch_name_v2).label('branch_name_v2'),
+        func.min(subq.c.due_date).label('due_date'),
+        func.min(subq.c.original_due_date).label('original_due_date'),
+        func.group_concat(subq.c.id).label('data_ids')
+    ).group_by(subq.c.document_number).all()
+
+    # Fetch all clusters for lookup
+    clusters = Cluster.query.all()
+    cluster_dict = {}
+    for cluster in clusters:
+        if cluster.branch:
+            cluster_dict[cluster.branch.lower()] = cluster.area or ''
+
+    documents = []
+    for row in results:
+        # Filter out any data_ids that are already assigned
+        if row.data_ids:
+            data_id_list = row.data_ids.split(',')
+            # Check if ANY of the data_ids in this group are already assigned
+            if any(data_id in assigned_data_ids for data_id in data_id_list):
+                continue
+
+            # Determine branch (prefer branch_name, fallback to v2)
+            branch = row.branch_name or row.branch_name_v2 or '—'
+            branch_v2 = row.branch_name_v2 or row.branch_name or ''
+            area = cluster_dict.get(branch_v2.lower(), '') if branch_v2 else ''
+
+            documents.append({
+                'document_number': row.document_number,
+                'total_cbm': float(row.total_cbm) if row.total_cbm else 0.0,
+                'branch': branch,
+                'area': area,
+                'due_date': row.due_date.strftime('%Y-%m-%d') if row.due_date else '',
+                'original_due_date': row.original_due_date.strftime('%Y-%m-%d') if row.original_due_date else '',
+                'data_ids': data_id_list
+            })
+
+    return jsonify(documents)
+
+
+@app.route('/add_shipments_to_trip', methods=['POST'])
+@login_required
+def add_shipments_to_trip():
+    """Add shipments to an existing trip"""
+    if current_user.position != 'admin':
+        return jsonify({'success': False, 'message': 'Access denied. Admin privileges required.'}), 403
+
+    try:
+        data = request.get_json()
+        trip_id = data.get('trip_id')
+        schedule_id = data.get('schedule_id')
+        data_ids = data.get('data_ids', [])
+
+        if not trip_id or not data_ids:
+            return jsonify({'success': False, 'message': 'Missing required parameters'}), 400
+
+        trip = db.session.get(Trip, trip_id)
+        if not trip:
+            return jsonify({'success': False, 'message': 'Trip not found'}), 404
+
+        # Group data by branch_name_v2 to create aggregated TripDetail entries
+        branch_groups = {}
+        for data_id in data_ids:
+            if not data_id:
+                continue
+            data_record = db.session.get(Data, data_id)
+            if data_record:
+                branch_name = data_record.branch_name_v2 or data_record.branch_name or 'Unknown'
+                if branch_name not in branch_groups:
+                    branch_groups[branch_name] = {
+                        'data_ids': [],
+                        'document_numbers': [],
+                        'total_cbm': 0.0,
+                        'total_ordered_qty': 0,
+                        'area': data_record.branch_name or data_record.branch_name_v2 or '',
+                        'original_due_date': data_record.original_due_date
+                    }
+
+                branch_groups[branch_name]['data_ids'].append(data_record.id)
+                branch_groups[branch_name]['document_numbers'].append(data_record.document_number)
+                branch_groups[branch_name]['total_cbm'] += data_record.cbm * data_record.ordered_qty or 0.0
+                branch_groups[branch_name]['total_ordered_qty'] += data_record.ordered_qty or 0
+
+                # Mark as Scheduled
+                data_record.status = "Scheduled"
+                data_record.delivered_qty = data_record.ordered_qty or 0.0
+
+        # Create aggregated TripDetail entries grouped by branch
+        trip_total_cbm = trip.total_cbm or 0.0
+        for branch_name, branch_data in branch_groups.items():
+            detail = TripDetail(
+                document_number=branch_data['document_numbers'][0],
+                branch_name_v2=branch_name,
+                data_ids=','.join(str(id) for id in branch_data['data_ids']),
+                trip_id=trip.id,
+                area=branch_data['area'],
+                total_cbm=branch_data['total_cbm'],
+                total_ordered_qty=branch_data['total_ordered_qty'],
+                total_delivered_qty=branch_data['total_ordered_qty'],
+                status="Delivered",
+                original_due_date=branch_data['original_due_date']
+            )
+            db.session.add(detail)
+            trip_total_cbm += branch_data['total_cbm']
+
+        trip.total_cbm = trip_total_cbm
+
+        # Update schedule actual total CBM
+        schedule = db.session.get(Schedule, schedule_id)
+        if schedule:
+            schedule.actual = sum(t.total_cbm for t in schedule.trips)
+
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'Successfully added {len(data_ids)} shipment(s) to trip'})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 
 # view_schedule.html individual delete button for each trip
 @app.route('/cancel_trip_detail', methods=['POST'])
@@ -2692,12 +2886,16 @@ def apply_data_backload():
         data = request.get_json()
         record_id = data.get('record_id')
         backload_qty = data.get('backload_qty')
+        backload_remarks = data.get('backload_remarks')
 
         if not record_id:
             return jsonify({'success': False, 'message': 'Record ID is required'}), 400
 
         if backload_qty is None or backload_qty <= 0:
             return jsonify({'success': False, 'message': 'Backload quantity must be greater than zero'}), 400
+
+        if not backload_remarks:
+            return jsonify({'success': False, 'message': 'Backload remarks are required'}), 400
 
         # Get the data record
         data_record = Data.query.get_or_404(record_id)
@@ -2741,7 +2939,8 @@ def apply_data_backload():
             customer_vendor_name=data_record.customer_vendor_name,
             status=data_record.status,
             delivery_type=data_record.delivery_type,
-            backload_qty=backload_qty
+            backload_qty=backload_qty,
+            backload_remarks=backload_remarks
         )
         db.session.add(backload)
 

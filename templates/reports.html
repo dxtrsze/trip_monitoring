@@ -309,6 +309,31 @@
     </div>
   </div>
   <div class="card-body">
+    <!-- Summary Section -->
+    <div class="card mb-3 bg-light">
+      <div class="card-header py-2">
+        <h6 class="mb-0"><i class="bi bi-calculator"></i> Summary by Vehicle</h6>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered">
+            <thead class="table-light">
+              <tr>
+                <th>Plate Number</th>
+                <th>Total KM Traveled</th>
+                <th>Total Litters</th>
+                <th>Total Amount</th>
+                <th>Average Price/Liter</th>
+              </tr>
+            </thead>
+            <tbody id="fuelSummaryBody">
+              <!-- Summary data will be dynamically inserted here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- ODO Records Table -->
     <div class="table-responsive">
       <table class="table table-striped table-hover" id="fuelTable">
         <thead>
@@ -793,10 +818,70 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function displayFuelData(data) {
     fuelTableBody.innerHTML = '';
+    const fuelSummaryBody = document.getElementById('fuelSummaryBody');
+    fuelSummaryBody.innerHTML = '';
 
     if (data.length === 0) {
       fuelTableBody.innerHTML = '<tr><td colspan="8" class="text-center">No ODO records found for the selected criteria</td></tr>';
+      fuelSummaryBody.innerHTML = '<tr><td colspan="5" class="text-center">No summary data available</td></tr>';
     } else {
+      // Calculate summary by plate number
+      const summary = {};
+      data.forEach(row => {
+        const plate = row.plate_number;
+        if (!summary[plate]) {
+          summary[plate] = {
+            plate_number: plate,
+            start_odo: null,
+            end_odo: null,
+            total_litters: 0,
+            total_amount: 0
+          };
+        }
+
+        const odoReading = parseFloat(row.odometer_reading || 0);
+
+        if (row.status === 'start odo') {
+          if (summary[plate].start_odo === null || odoReading < summary[plate].start_odo) {
+            summary[plate].start_odo = odoReading;
+          }
+        } else if (row.status === 'end odo') {
+          if (summary[plate].end_odo === null || odoReading > summary[plate].end_odo) {
+            summary[plate].end_odo = odoReading;
+          }
+        }
+
+        if (row.litters) {
+          summary[plate].total_litters += parseFloat(row.litters);
+        }
+        if (row.amount) {
+          summary[plate].total_amount += parseFloat(row.amount);
+        }
+      });
+
+      // Display summary
+      Object.values(summary).forEach(summaryRow => {
+        const tr = document.createElement('tr');
+
+        const totalKm = (summaryRow.end_odo !== null && summaryRow.start_odo !== null)
+          ? (summaryRow.end_odo - summaryRow.start_odo).toFixed(1)
+          : 'N/A';
+
+        const avgPricePerLiter = summaryRow.total_litters > 0
+          ? (summaryRow.total_amount / summaryRow.total_litters).toFixed(2)
+          : 'N/A';
+
+        tr.innerHTML = `
+          <td><strong>${summaryRow.plate_number}</strong></td>
+          <td><span class="badge bg-primary fs-6">${totalKm}</span></td>
+          <td>${summaryRow.total_litters.toFixed(2)}</td>
+          <td>₱${summaryRow.total_amount.toFixed(2)}</td>
+          <td>${avgPricePerLiter !== 'N/A' ? '₱' + avgPricePerLiter : 'N/A'}</td>
+        `;
+        fuelSummaryBody.appendChild(tr);
+      });
+
+      // Display detailed records
       data.forEach(row => {
         const tr = document.createElement('tr');
 
