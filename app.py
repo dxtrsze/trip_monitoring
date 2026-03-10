@@ -1420,6 +1420,85 @@ def add_shipments_to_trip():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@app.route('/get_trip_crew/<int:trip_id>')
+@login_required
+def get_trip_crew(trip_id):
+    """Get current crew for a trip and all available drivers/assistants"""
+    if current_user.position != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+
+    try:
+        trip = db.session.get(Trip, trip_id)
+        if not trip:
+            return jsonify({'error': 'Trip not found'}), 404
+
+        # Get current driver and assistant IDs
+        current_driver_ids = [d.id for d in trip.drivers]
+        current_assistant_ids = [a.id for a in trip.assistants]
+
+        # Get all available drivers and assistants
+        all_drivers = Manpower.query.filter_by(role='Driver').order_by(Manpower.name).all()
+        all_assistants = Manpower.query.filter_by(role='Assistant').order_by(Manpower.name).all()
+
+        return jsonify({
+            'current_drivers': current_driver_ids,
+            'current_assistants': current_assistant_ids,
+            'all_drivers': [{'id': d.id, 'name': d.name} for d in all_drivers],
+            'all_assistants': [{'id': a.id, 'name': a.name} for a in all_assistants]
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/update_trip_crew', methods=['POST'])
+@login_required
+def update_trip_crew():
+    """Update drivers and assistants for a trip"""
+    if current_user.position != 'admin':
+        return jsonify({'success': False, 'message': 'Access denied. Admin privileges required.'}), 403
+
+    try:
+        data = request.get_json()
+        trip_id = data.get('trip_id')
+        driver_ids = data.get('driver_ids', [])
+        assistant_ids = data.get('assistant_ids', [])
+
+        if not trip_id:
+            return jsonify({'success': False, 'message': 'Trip ID is required'}), 400
+
+        trip = db.session.get(Trip, trip_id)
+        if not trip:
+            return jsonify({'success': False, 'message': 'Trip not found'}), 404
+
+        # Validate that at least one driver is selected
+        if not driver_ids:
+            return jsonify({'success': False, 'message': 'At least one driver is required'}), 400
+
+        # Clear existing drivers and assistants
+        trip.drivers.clear()
+        trip.assistants.clear()
+
+        # Add new drivers
+        for driver_id in driver_ids:
+            driver = db.session.get(Manpower, driver_id)
+            if driver:
+                trip.drivers.append(driver)
+
+        # Add new assistants
+        for assistant_id in assistant_ids:
+            assistant = db.session.get(Manpower, assistant_id)
+            if assistant:
+                trip.assistants.append(assistant)
+
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Crew updated successfully'})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error updating crew: {str(e)}'}), 500
+
+
 # view_schedule.html individual delete button for each trip
 @app.route('/cancel_trip_detail', methods=['POST'])
 def cancel_trip_detail():

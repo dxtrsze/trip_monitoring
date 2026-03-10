@@ -29,9 +29,14 @@
             <span class="badge bg-secondary">CBM: {{ "%.2f"|format(trip.total_cbm) }}</span>
           </h6>
           {% if current_user.position == 'admin' %}
-          <button type="button" class="btn btn-sm btn-warning btn-edit-trip" data-trip-id="{{ trip.id }}" data-schedule-id="{{ schedule.id }}" data-delivery-date="{{ schedule.delivery_schedule.strftime('%Y-%m-%d') }}">
-            Edit Trip
-          </button>
+          <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-sm btn-warning btn-edit-trip" data-trip-id="{{ trip.id }}" data-schedule-id="{{ schedule.id }}" data-delivery-date="{{ schedule.delivery_schedule.strftime('%Y-%m-%d') }}">
+              Edit Trip
+            </button>
+            <button type="button" class="btn btn-sm btn-info btn-edit-crew" data-trip-id="{{ trip.id }}">
+              Edit Crew
+            </button>
+          </div>
           {% endif %}
         </div>
         <p>
@@ -272,6 +277,41 @@
   </div>
 </div>
 
+<!-- Edit Crew Modal -->
+<div class="modal fade" id="editCrewModal" tabindex="-1" aria-labelledby="editCrewModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editCrewModalLabel">Edit Trip Crew</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editCrewForm">
+        <div class="modal-body">
+          <input type="hidden" id="editCrewTripId" name="trip_id">
+          <div class="mb-3">
+            <label class="form-label">Drivers</label>
+            <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto;" id="editCrewDriversContainer">
+              <!-- Drivers will be loaded here -->
+            </div>
+            <div class="form-text">Select one or more drivers</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Assistants</label>
+            <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto;" id="editCrewAssistantsContainer">
+              <!-- Assistants will be loaded here -->
+            </div>
+            <div class="form-text">Select one or more assistants</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- <script>
 function cancelTripDetail(documentNumber, scheduleId, tripNumber) {
   if (confirm('Are you sure you want to cancel this trip detail?')) {
@@ -319,6 +359,10 @@ function cancelTripDetail(branchName, scheduleId, tripNumber) {
 
 // Handle the confirm cancel button click
 document.addEventListener('DOMContentLoaded', function() {
+  // Initialize Edit Crew modal
+  editCrewModal = new bootstrap.Modal(document.getElementById('editCrewModal'));
+  editCrewForm = document.getElementById('editCrewForm');
+
   // Event delegation for Cancel buttons
   document.querySelectorAll('.btn-cancel-trip').forEach(button => {
     button.addEventListener('click', function() {
@@ -452,6 +496,70 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('cancelModal').addEventListener('hidden.bs.modal', function () {
     document.getElementById('cancelReason').value = '';
     document.getElementById('cancelDepartment').value = '';
+  });
+
+  // Event delegation for Edit Trip buttons
+  document.querySelectorAll('.btn-edit-trip').forEach(button => {
+    button.addEventListener('click', function() {
+      editTripId = this.dataset.tripId;
+      editScheduleId = this.dataset.scheduleId;
+      editDeliveryDate = this.dataset.deliveryDate;
+      openEditTripModal();
+    });
+  });
+
+  // Event delegation for Edit Crew buttons
+  document.querySelectorAll('.btn-edit-crew').forEach(button => {
+    button.addEventListener('click', function() {
+      const tripId = this.getAttribute('data-trip-id');
+      openEditCrewModal(tripId);
+    });
+  });
+
+  // Handle edit crew form submission
+  editCrewForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const tripId = document.getElementById('editCrewTripId').value;
+
+    // Get selected drivers
+    const selectedDrivers = [];
+    document.querySelectorAll('#editCrewDriversContainer input[type="checkbox"]:checked').forEach(cb => {
+      selectedDrivers.push(cb.value);
+    });
+
+    // Get selected assistants
+    const selectedAssistants = [];
+    document.querySelectorAll('#editCrewAssistantsContainer input[type="checkbox"]:checked').forEach(cb => {
+      selectedAssistants.push(cb.value);
+    });
+
+    // Update crew
+    fetch('/update_trip_crew', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        trip_id: tripId,
+        driver_ids: selectedDrivers,
+        assistant_ids: selectedAssistants
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('Crew updated successfully!');
+        editCrewModal.hide();
+        location.reload();
+      } else {
+        alert('Error: ' + data.message);
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('An error occurred while updating crew');
+    });
   });
 });
 
@@ -751,6 +859,65 @@ function addSelectedShipmentsToTrip() {
     console.error('Error:', error);
     alert('An error occurred while adding shipments');
   });
+}
+
+// Edit Crew Functionality
+let editCrewModal = null;
+let editCrewForm = null;
+
+function openEditCrewModal(tripId) {
+  // Fetch current trip data
+  fetch(`/get_trip_crew/${tripId}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.error) {
+        alert('Error: ' + data.error);
+        return;
+      }
+
+      document.getElementById('editCrewTripId').value = tripId;
+
+      // Populate drivers
+      const driversContainer = document.getElementById('editCrewDriversContainer');
+      let driversHtml = '';
+      data.all_drivers.forEach(driver => {
+        const isChecked = data.current_drivers.includes(driver.id) ? 'checked' : '';
+        driversHtml += `
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="drivers" value="${driver.id}" id="edit_driver_${driver.id}" ${isChecked}>
+            <label class="form-check-label" for="edit_driver_${driver.id}">
+              ${driver.name}
+            </label>
+          </div>`;
+      });
+      driversContainer.innerHTML = driversHtml;
+
+      // Populate assistants
+      const assistantsContainer = document.getElementById('editCrewAssistantsContainer');
+      let assistantsHtml = '';
+      data.all_assistants.forEach(assistant => {
+        const isChecked = data.current_assistants.includes(assistant.id) ? 'checked' : '';
+        assistantsHtml += `
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="assistants" value="${assistant.id}" id="edit_assistant_${assistant.id}" ${isChecked}>
+            <label class="form-check-label" for="edit_assistant_${assistant.id}">
+              ${assistant.name}
+            </label>
+          </div>`;
+      });
+      assistantsContainer.innerHTML = assistantsHtml;
+
+      editCrewModal.show();
+    })
+    .catch(error => {
+      console.error('Error loading crew data:', error);
+      alert('An error occurred while loading crew data: ' + error.message);
+    });
 }
 </script>
 {% endblock %}
