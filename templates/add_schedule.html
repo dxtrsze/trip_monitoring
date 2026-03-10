@@ -146,7 +146,7 @@ function renderShipments() {
 
     html += `
       <tr ${isAssigned ? 'class="table-secondary"' : ''}>
-        <td><input type="checkbox" class="shipment-checkbox" data-ids="${item.data_ids.join(',')}" data-cbm="${item.total_cbm}" ${isAssigned ? 'disabled' : ''}></td>
+        <td><input type="checkbox" class="shipment-checkbox" data-ids="${item.data_ids.join(',')}" data-cbm="${item.total_cbm}" data-branch="${item.branch}" data-doc-number="${item.document_number}" ${isAssigned ? 'disabled' : ''}></td>
         <td>${item.document_number} ${isAssigned ? '<span class="badge bg-secondary ms-1">Assigned</span>' : ''}</td>
         <td>${item.branch}</td>
         <td>${item.area}</td>
@@ -159,6 +159,13 @@ function renderShipments() {
 }
 
 document.getElementById('addTripBtn').addEventListener('click', addTrip);
+
+// Helper function to get ordinal suffix (1st, 2nd, 3rd, etc.)
+function getOrdinal(n) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
 
 function addTrip() {
   tripCounter++;
@@ -220,6 +227,7 @@ function addTrip() {
         </div>
         <div><strong>Total CBM:</strong> <span id="trip-${tripId}-cbm">0.00</span></div>
         <input type="hidden" name="trip_${tripId}_data_ids" id="trip-${tripId}-ids">
+        <input type="hidden" name="trip_${tripId}_delivery_orders" id="trip-${tripId}-orders">
       </div>
     </div>`;
 
@@ -231,38 +239,59 @@ function assignToTrip(tripId) {
   const checkboxes = document.querySelectorAll('.shipment-checkbox:checked');
   const tripContainer = document.getElementById(`trip-${tripId}-shipments`);
   const idsInput = document.getElementById(`trip-${tripId}-ids`);
+  const ordersInput = document.getElementById(`trip-${tripId}-orders`);
   let totalCbm = 0;
 
-  // Get current CBM and IDs from the trip
+  // Get current CBM, IDs, and orders from the trip
   const currentCbm = parseFloat(document.getElementById(`trip-${tripId}-cbm`).textContent) || 0;
   const currentIds = idsInput.value ? idsInput.value.split(',') : [];
+  const currentOrders = ordersInput.value ? JSON.parse(ordersInput.value) : {};
 
   // Start with existing values
   let assigned = [...currentIds];
+  let orders = {...currentOrders};
   totalCbm = currentCbm;
+
+  // Auto-increment order for new shipments
+  const maxOrder = Object.keys(orders).length > 0 ? Math.max(...Object.values(orders).map(Number)) : 0;
+  let nextOrder = maxOrder + 1;
+
+  // Group shipments by branch to avoid duplicate order inputs
+  const branchGroups = {};
+
   checkboxes.forEach(cb => {
     const ids = cb.dataset.ids;
     const cbm = parseFloat(cb.dataset.cbm);
-    const documentNumber = cb.parentElement.nextElementSibling.textContent;
+    const branchName = cb.dataset.branch;
+    const documentNumber = cb.dataset.docNumber;
+
     if (ids) {
-      // Check if this shipment is already assigned to avoid duplicates
       const newIds = ids.split(',');
+
+      // Check if any of these IDs are already assigned
       const hasExistingId = newIds.some(id => assigned.includes(id));
 
       if (!hasExistingId) {
+        // Add to assigned list
         assigned.push(...newIds);
         totalCbm += cbm;
-        const shipmentId = `shipment-${ids.split(',')[0]}`;
-        tripContainer.innerHTML += `
-          <div class="d-flex justify-content-between small" id="${shipmentId}">
-            <span>${documentNumber} (Grouped)</span>
-            <div>
-              <span>${cbm.toFixed(2)}</span>
-              <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeFromTrip(${tripId}, '${ids}', ${cbm}, '${documentNumber}')">Remove</button>
-            </div>
-          </div>`;
 
-        // Update the row in the main table to show it's assigned
+        // Group by branch
+        if (!branchGroups[branchName]) {
+          branchGroups[branchName] = {
+            dataIds: [],
+            allDataIds: [],  // Track all IDs for this branch
+            cbm: 0,
+            docNumbers: []
+          };
+        }
+
+        branchGroups[branchName].dataIds.push(newIds[0]);  // First ID for order key
+        branchGroups[branchName].allDataIds.push(...newIds);  // All IDs for removal
+        branchGroups[branchName].cbm += cbm;
+        branchGroups[branchName].docNumbers.push(documentNumber);
+
+        // Mark checkboxes as assigned
         const row = cb.closest('tr');
         if (row) {
           row.classList.add('table-secondary');
@@ -283,46 +312,116 @@ function assignToTrip(tripId) {
     cb.checked = false; // uncheck after assign
   });
 
+  // Create one shipment display per branch
+  for (const [branchName, group] of Object.entries(branchGroups)) {
+    // Set the delivery order for this branch (using first data ID)
+    const firstId = group.dataIds[0];
+    orders[firstId] = nextOrder;
+    nextOrder++;
+
+    const shipmentId = `shipment-${firstId}`;
+    const orderInputId = `order-${tripId}-${firstId}`;
+    const badgeId = `badge-${tripId}-${firstId}`;
+
+    // Format document numbers for display (show first 2, then " +X more" if needed)
+    const docDisplay = group.docNumbers.length > 2
+      ? `${group.docNumbers.slice(0, 2).join(', ')} +${group.docNumbers.length - 2} more`
+      : group.docNumbers.join(', ');
+
+    tripContainer.innerHTML += `
+      <div class="d-flex justify-content-between align-items-center small" id="${shipmentId}" data-branch="${branchName}" data-all-ids="${group.allDataIds.join(',')}">
+        <div>
+          <strong>${branchName}</strong>
+          <span class="text-muted">(${docDisplay})</span>
+        </div>
+        <div class="d-flex align-items-center">
+          <span class="badge bg-primary me-2" id="${badgeId}">${getOrdinal(orders[firstId])}</span>
+          <input type="number" class="form-control form-control-sm me-2"
+                 id="${orderInputId}" min="1" step="1" value="${orders[firstId]}"
+                 style="width: 70px;"
+                 onchange="updateDeliveryOrder(${tripId}, '${firstId}', this.value)">
+          <span>${group.cbm.toFixed(2)}</span>
+          <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeBranchFromTrip(${tripId}, '${firstId}', ${group.cbm}, '${branchName}')">Remove</button>
+        </div>
+      </div>`;
+  }
+
   document.getElementById(`trip-${tripId}-cbm`).textContent = totalCbm.toFixed(2);
   idsInput.value = assigned.join(',');
+  ordersInput.value = JSON.stringify(orders);
+}
+
+// Function to update delivery order when input changes
+function updateDeliveryOrder(tripId, dataId, newOrder) {
+  const ordersInput = document.getElementById(`trip-${tripId}-orders`);
+  const orders = ordersInput.value ? JSON.parse(ordersInput.value) : {};
+  orders[dataId] = parseInt(newOrder) || 1;
+  ordersInput.value = JSON.stringify(orders);
+
+  // Update the badge
+  const badge = document.getElementById(`badge-${tripId}-${dataId}`);
+  if (badge) {
+    badge.textContent = getOrdinal(orders[dataId]);
+  }
 }
 
 function removeTrip(tripId) {
   document.querySelector(`.trip-card[data-trip="${tripId}"]`).remove();
 }
 
-function removeFromTrip(tripId, ids, cbm, documentNumber) {
+function removeBranchFromTrip(tripId, firstId, cbm, branchName) {
   // Remove from the trip's shipment list
-  const shipmentId = `shipment-${ids.split(',')[0]}`;
+  const shipmentId = `shipment-${firstId}`;
   const element = document.getElementById(shipmentId);
-  if (element) {
-    element.remove();
-  }
-  
+
+  if (!element) return;
+
+  // Get all data IDs for this branch
+  const allIds = element.getAttribute('data-all-ids').split(',');
+  element.remove();
+
   // Update the hidden input
   const idsInput = document.getElementById(`trip-${tripId}-ids`);
   const currentIds = idsInput.value.split(',');
-  const removingIds = ids.split(',');
-  const newIds = currentIds.filter(id => !removingIds.includes(id));
+  const newIds = currentIds.filter(id => !allIds.includes(id));
   idsInput.value = newIds.join(',');
-  
+
+  // Update the delivery orders hidden input
+  const ordersInput = document.getElementById(`trip-${tripId}-orders`);
+  const orders = ordersInput.value ? JSON.parse(ordersInput.value) : {};
+  delete orders[firstId];
+  ordersInput.value = JSON.stringify(orders);
+
   // Update the CBM total
   const currentCbm = parseFloat(document.getElementById(`trip-${tripId}-cbm`).textContent);
   const newCbm = currentCbm - cbm;
   document.getElementById(`trip-${tripId}-cbm`).textContent = newCbm.toFixed(2);
-  
-  // Re-enable the checkbox in the main list
-  const checkbox = document.querySelector(`.shipment-checkbox[data-ids*="${ids.split(',')[0]}"]`);
-  if (checkbox) {
-    checkbox.disabled = false;
-    const row = checkbox.closest('tr');
-    if (row) {
-      row.classList.remove('table-secondary');
-      const docCell = row.cells[1];
-      const badge = docCell.querySelector('.badge');
-      if (badge) badge.remove();
+
+  // Re-enable all checkboxes for this branch in the main list
+  allIds.forEach(id => {
+    const checkbox = document.querySelector(`.shipment-checkbox[data-ids*="${id}"]`);
+    if (checkbox) {
+      checkbox.disabled = false;
+      const row = checkbox.closest('tr');
+      if (row) {
+        // Only remove table-secondary and badge if no other IDs from this row are still assigned
+        const checkboxIds = checkbox.dataset.ids.split(',');
+        const anyStillAssigned = checkboxIds.some(cid => newIds.includes(cid));
+
+        if (!anyStillAssigned) {
+          row.classList.remove('table-secondary');
+          const docCell = row.cells[1];
+          const badge = docCell.querySelector('.badge');
+          if (badge) badge.remove();
+        }
+      }
     }
-  }
+  });
+}
+
+// Keep old function name for backward compatibility
+function removeFromTrip(tripId, ids, cbm, documentNumber) {
+  removeBranchFromTrip(tripId, ids.split(',')[0], cbm, documentNumber);
 }
 </script>
 {% endblock %}

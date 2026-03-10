@@ -222,6 +222,7 @@
             <th>Vehicle</th>
             <th>Driver(s)</th>
             <th>Assistant(s)</th>
+            <th>Delivery Order</th>
             <th>Branch</th>
             <th>Ordered Qty</th>
             <th>Delivered Qty</th>
@@ -732,7 +733,7 @@ document.addEventListener('DOMContentLoaded', function() {
     reportTableBody.innerHTML = '';
 
     if (data.length === 0) {
-      reportTableBody.innerHTML = '<tr><td colspan="9" class="text-center">No scheduled trips found for the selected date range</td></tr>';
+      reportTableBody.innerHTML = '<tr><td colspan="10" class="text-center">No scheduled trips found for the selected date range</td></tr>';
     } else {
       data.forEach(row => {
         const tr = document.createElement('tr');
@@ -744,12 +745,21 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         const statusColor = statusColors[row.status] || 'secondary';
 
+        // Helper function to get ordinal suffix
+        function getOrdinal(n) {
+          if (!n) return '—';
+          const s = ["th", "st", "nd", "rd"];
+          const v = n % 100;
+          return n + (s[(v - 20) % 10] || s[v] || s[0]);
+        }
+
         tr.innerHTML = `
           <td>${row.delivery_schedule}</td>
           <td><span class="badge bg-primary">Trip ${row.trip_number}</span></td>
           <td>${row.plate_number}</td>
           <td>${row.drivers}</td>
           <td>${row.assistants}</td>
+          <td><span class="badge bg-info">${getOrdinal(row.delivery_order)}</span></td>
           <td>${row.branch_name_v2}</td>
           <td>${row.total_ordered_qty}</td>
           <td>${row.total_delivered_qty}</td>

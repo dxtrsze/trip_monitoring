@@ -122,6 +122,7 @@ class TripDetail(db.Model):
     reason = db.Column(db.Text)  # Reason for arrival/departure notes
 
     delivery_type = db.Column(db.String(100), nullable=True)  # Delivery type
+    delivery_order = db.Column(db.Integer, nullable=True)  # Delivery sequence (1, 2, 3...)
     original_due_date = db.Column(db.Date, nullable=True)  # Original due date from Data
 
     def __repr__(self):

@@ -1054,6 +1054,11 @@ def view_schedule():
             # User has no associated manpower entry - show no schedules
             schedules = []
 
+    # Sort trip details by delivery_order for each trip (NULL values last)
+    for schedule in schedules:
+        for trip in schedule.trips:
+            trip.details = sorted(trip.details, key=lambda d: (d.delivery_order is None, d.delivery_order or 999))
+
     return render_template('view_schedule.html', schedules=schedules)
 
 
@@ -1129,6 +1134,14 @@ def add_schedule():
                 # Split the comma-separated string into individual IDs
                 data_ids = data_ids_str.split(',') if data_ids_str else []
 
+                # Parse delivery orders from JSON if provided
+                import json
+                delivery_orders_str = request.form.get(f'trip_{i}_delivery_orders', '{}')
+                try:
+                    delivery_orders = json.loads(delivery_orders_str) if delivery_orders_str else {}
+                except json.JSONDecodeError:
+                    delivery_orders = {}
+
                 # Group data by branch_name_v2 to create aggregated TripDetail entries
                 branch_groups = {}
                 for data_id in data_ids:
@@ -1144,7 +1157,8 @@ def add_schedule():
                                 'total_cbm': 0.0,
                                 'total_ordered_qty': 0,
                                 'area': data.branch_name or data.branch_name_v2 or '',
-                                'original_due_date': data.original_due_date  # Store original due date
+                                'original_due_date': data.original_due_date,  # Store original due date
+                                'delivery_order': None  # Will be set from first data_id
                             }
 
                         branch_groups[branch_name]['data_ids'].append(data.id)
@@ -1152,13 +1166,24 @@ def add_schedule():
                         branch_groups[branch_name]['total_cbm'] += data.cbm * data.ordered_qty or 0.0
                         branch_groups[branch_name]['total_ordered_qty'] += data.ordered_qty or 0
 
+                        # Set delivery_order from first data_id if not already set
+                        if branch_groups[branch_name]['delivery_order'] is None and str(data.id) in delivery_orders:
+                            branch_groups[branch_name]['delivery_order'] = delivery_orders[str(data.id)]
+
                         # Mark as Scheduled
                         data.status = "Scheduled"
                         data.delivered_qty = data.ordered_qty or 0.0
 
                 # Create aggregated TripDetail entries grouped by branch
                 trip_total_cbm = 0.0
+                auto_order = 1
                 for branch_name, branch_data in branch_groups.items():
+                    # Use provided delivery_order or auto-increment
+                    detail_order = branch_data['delivery_order']
+                    if detail_order is None:
+                        detail_order = auto_order
+                        auto_order += 1
+
                     detail = TripDetail(
                         document_number=branch_data['document_numbers'][0],  # Store first doc number for reference
                         branch_name_v2=branch_name,
@@ -1169,7 +1194,8 @@ def add_schedule():
                         total_ordered_qty=branch_data['total_ordered_qty'],
                         total_delivered_qty=branch_data['total_ordered_qty'],  # Initialize with total_ordered_qty
                         status="Delivered",
-                        original_due_date=branch_data['original_due_date']  # Save original due date
+                        original_due_date=branch_data['original_due_date'],  # Save original due date
+                        delivery_order=detail_order  # Set delivery order
                     )
                     db.session.add(detail)
                     trip_total_cbm += branch_data['total_cbm']
@@ -1387,6 +1413,11 @@ def add_shipments_to_trip():
                 data_record.status = "Scheduled"
                 data_record.delivered_qty = data_record.ordered_qty or 0.0
 
+        # Get the maximum delivery_order for this trip (to append to end)
+        max_order_result = db.session.query(db.func.max(TripDetail.delivery_order)).filter_by(trip_id=trip.id).first()
+        max_order = max_order_result[0] if max_order_result and max_order_result[0] is not None else 0
+        next_order = max_order + 1
+
         # Create aggregated TripDetail entries grouped by branch
         trip_total_cbm = trip.total_cbm or 0.0
         for branch_name, branch_data in branch_groups.items():
@@ -1400,10 +1431,12 @@ def add_shipments_to_trip():
                 total_ordered_qty=branch_data['total_ordered_qty'],
                 total_delivered_qty=branch_data['total_ordered_qty'],
                 status="Delivered",
-                original_due_date=branch_data['original_due_date']
+                original_due_date=branch_data['original_due_date'],
+                delivery_order=next_order  # Append to end of delivery sequence
             )
             db.session.add(detail)
             trip_total_cbm += branch_data['total_cbm']
+            next_order += 1  # Increment for next detail
 
         trip.total_cbm = trip_total_cbm
 
@@ -1449,6 +1482,71 @@ def get_trip_crew(trip_id):
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/get_trip_details/<int:trip_id>')
+@login_required
+def get_trip_details(trip_id):
+    """Get trip details for reordering delivery stops"""
+    if current_user.position != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+
+    try:
+        trip = db.session.get(Trip, trip_id)
+        if not trip:
+            return jsonify({'error': 'Trip not found'}), 404
+
+        # Get all trip details
+        details = []
+        for detail in trip.details:
+            details.append({
+                'id': detail.id,
+                'branch_name_v2': detail.branch_name_v2,
+                'delivery_order': detail.delivery_order,
+                'total_cbm': detail.total_cbm
+            })
+
+        return jsonify({'details': details})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/update_delivery_order', methods=['POST'])
+@login_required
+def update_delivery_order():
+    """Update delivery order for trip details"""
+    if current_user.position != 'admin':
+        return jsonify({'success': False, 'message': 'Access denied. Admin privileges required.'}), 403
+
+    try:
+        data = request.get_json()
+        trip_id = data.get('trip_id')
+        orders = data.get('orders', {})
+
+        if not trip_id:
+            return jsonify({'success': False, 'message': 'Trip ID is required'}), 400
+
+        if not orders:
+            return jsonify({'success': False, 'message': 'Orders are required'}), 400
+
+        # Verify the trip exists
+        trip = db.session.get(Trip, trip_id)
+        if not trip:
+            return jsonify({'success': False, 'message': 'Trip not found'}), 404
+
+        # Update each trip detail's delivery_order
+        for detail_id, order in orders.items():
+            detail = db.session.get(TripDetail, int(detail_id))
+            if detail and detail.trip_id == trip_id:
+                detail.delivery_order = order
+
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Delivery order updated successfully'})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error updating delivery order: {str(e)}'}), 500
 
 
 @app.route('/update_trip_crew', methods=['POST'])
@@ -1751,7 +1849,9 @@ def scheduled_trips_report():
         result = []
         for schedule in schedules:
             for trip in schedule.trips:
-                for detail in trip.details:
+                # Sort trip details by delivery_order (NULL values last)
+                sorted_details = sorted(trip.details, key=lambda d: (d.delivery_order is None, d.delivery_order or 999))
+                for detail in sorted_details:
                     # Get all drivers for this trip
                     drivers = ', '.join([driver.name for driver in trip.drivers]) if trip.drivers else 'N/A'
 
@@ -1764,6 +1864,7 @@ def scheduled_trips_report():
                         'plate_number': trip.vehicle.plate_number if trip.vehicle else 'N/A',
                         'drivers': drivers,
                         'assistants': assistants,
+                        'delivery_order': detail.delivery_order,
                         'branch_name_v2': detail.branch_name_v2,
                         'total_ordered_qty': detail.total_ordered_qty or 0,
                         'total_delivered_qty': detail.total_delivered_qty or 0,
@@ -1813,18 +1914,27 @@ def export_scheduled_trips_report():
         # Write headers
         writer.writerow([
             'Date', 'Trip #', 'Vehicle', 'Driver(s)', 'Assistant(s)',
-            'Branch', 'Ordered Qty', 'Delivered Qty', 'Status'
+            'Delivery Order', 'Branch', 'Ordered Qty', 'Delivered Qty', 'Status'
         ])
 
         # Write data rows
         for schedule in schedules:
             for trip in schedule.trips:
-                for detail in trip.details:
+                # Sort trip details by delivery_order (NULL values last)
+                sorted_details = sorted(trip.details, key=lambda d: (d.delivery_order is None, d.delivery_order or 999))
+                for detail in sorted_details:
                     # Get all drivers for this trip
                     drivers = ', '.join([driver.name for driver in trip.drivers]) if trip.drivers else 'N/A'
 
                     # Get all assistants for this trip
                     assistants = ', '.join([assistant.name for assistant in trip.assistants]) if trip.assistants else 'N/A'
+
+                    # Get ordinal suffix for delivery order
+                    def get_ordinal(n):
+                        if not n: return '—'
+                        s = ["th", "st", "nd", "rd"]
+                        v = n % 100
+                        return f"{n}{(s[(v - 20) % 10] or s[v] or s[0])}"
 
                     writer.writerow([
                         schedule.delivery_schedule.strftime('%Y-%m-%d'),
@@ -1832,6 +1942,7 @@ def export_scheduled_trips_report():
                         trip.vehicle.plate_number if trip.vehicle else 'N/A',
                         drivers,
                         assistants,
+                        get_ordinal(detail.delivery_order),
                         detail.branch_name_v2,
                         detail.total_ordered_qty or 0,
                         detail.total_delivered_qty or 0,
