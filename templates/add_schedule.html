@@ -107,6 +107,20 @@ document.getElementById('loadBtn').addEventListener('click', function() {
     });
 });
 
+// Also validate vehicles when delivery date changes
+document.getElementById('deliveryDate').addEventListener('change', function() {
+  // Re-check all selected vehicles against the new date
+  const allVehicleSelects = document.querySelectorAll('.vehicle-select');
+  allVehicleSelects.forEach(select => {
+    const tripCard = select.closest('.trip-card');
+    const tripId = parseInt(tripCard.getAttribute('data-trip'));
+
+    if (select.value) {
+      checkVehicleSchedule(tripId, select.value);
+    }
+  });
+});
+
 function renderShipments() {
   const container = document.getElementById('shipmentsList');
   const countEl = document.getElementById('shipmentCount');
@@ -181,12 +195,13 @@ function addTrip() {
         <div class="row">
           <div class="col-md-4 mb-3">
             <label>Vehicle *</label>
-            <select name="vehicle_${tripId}" class="form-select" required>
+            <select name="vehicle_${tripId}" class="form-select vehicle-select" onchange="handleVehicleChange(${tripId})" required>
               <option value="">Select</option>
               {% for v in vehicles %}
               <option value="{{ v.id }}">{{ v.plate_number }}</option>
               {% endfor %}
             </select>
+            <div class="form-text text-danger" id="vehicle-error-${tripId}" style="display:none;">This vehicle is already selected in another trip</div>
           </div>
           <div class="col-md-4 mb-3">
             <label>Driver *</label>
@@ -366,7 +381,141 @@ function updateDeliveryOrder(tripId, dataId, newOrder) {
 }
 
 function removeTrip(tripId) {
-  document.querySelector(`.trip-card[data-trip="${tripId}"]`).remove();
+  const tripCard = document.querySelector(`.trip-card[data-trip="${tripId}"]`);
+
+  // Get the selected vehicle from this trip before removing
+  const vehicleSelect = tripCard.querySelector(`.vehicle-select`);
+  const selectedVehicle = vehicleSelect ? vehicleSelect.value : '';
+
+  // Remove the trip card
+  tripCard.remove();
+
+  // Update vehicle dropdowns to re-enable the vehicle that was in the removed trip
+  if (selectedVehicle) {
+    updateVehicleDropdowns();
+  }
+}
+
+// Handle vehicle selection change
+function handleVehicleChange(changedTripId) {
+  updateVehicleDropdowns();
+
+  // Check if the newly selected vehicle is a duplicate
+  const changedSelect = document.querySelector(`.trip-card[data-trip="${changedTripId}"] .vehicle-select`);
+  const selectedValue = changedSelect.value;
+  const errorDiv = document.getElementById(`vehicle-error-${changedTripId}`);
+
+  if (!selectedValue) {
+    errorDiv.style.display = 'none';
+    return;
+  }
+
+  // Check if this vehicle is selected in any other trip
+  const allSelects = document.querySelectorAll('.vehicle-select');
+  let isDuplicate = false;
+
+  allSelects.forEach(select => {
+    const tripCard = select.closest('.trip-card');
+    const tripId = tripCard.getAttribute('data-trip');
+
+    // Skip the changed trip and empty selections
+    if (parseInt(tripId) !== changedTripId && select.value === selectedValue) {
+      isDuplicate = true;
+    }
+  });
+
+  if (isDuplicate) {
+    errorDiv.style.display = 'block';
+    errorDiv.textContent = 'This vehicle is already selected in another trip';
+    changedSelect.classList.add('is-invalid');
+  } else {
+    errorDiv.style.display = 'none';
+    changedSelect.classList.remove('is-invalid');
+    // Check if vehicle is already scheduled for this date
+    checkVehicleSchedule(changedTripId, selectedValue);
+  }
+}
+
+// Check if vehicle is already scheduled for the selected date
+function checkVehicleSchedule(tripId, vehicleId) {
+  const deliveryDate = document.getElementById('deliveryDate').value;
+  if (!deliveryDate || !vehicleId) return;
+
+  fetch(`/api/vehicle_schedule_status?vehicle_id=${vehicleId}&date=${deliveryDate}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) {
+        console.error('Error checking vehicle schedule:', data.error);
+        return;
+      }
+
+      if (data.is_scheduled) {
+        const errorDiv = document.getElementById(`vehicle-error-${tripId}`);
+        const vehicleSelect = document.querySelector(`.trip-card[data-trip="${tripId}"] .vehicle-select`);
+
+        // Show warning that vehicle is already scheduled
+        const existingTrips = data.existing_schedules.map(s => `Trip #${s.trip_number}`).join(', ');
+        errorDiv.innerHTML = `<strong>Warning:</strong> Vehicle ${data.vehicle} is already scheduled for ${data.date} (${existingTrips}). <a href="javascript:void(0)" onclick="proceedWithVehicle(${tripId})">Proceed anyway</a> or select a different vehicle.`;
+        errorDiv.className = 'form-text text-warning';
+        errorDiv.style.display = 'block';
+
+        // Store the warning state
+        vehicleSelect.setAttribute('data-has-schedule-warning', 'true');
+      } else {
+        // Clear any schedule warning
+        const vehicleSelect = document.querySelector(`.trip-card[data-trip="${tripId}"] .vehicle-select`);
+        vehicleSelect.removeAttribute('data-has-schedule-warning');
+      }
+    })
+    .catch(err => console.error('Error checking vehicle schedule:', err));
+}
+
+// Allow user to proceed with duplicate schedule
+function proceedWithVehicle(tripId) {
+  const errorDiv = document.getElementById(`vehicle-error-${tripId}`);
+  errorDiv.style.display = 'none';
+}
+
+// Update vehicle dropdowns to disable already-selected vehicles
+function updateVehicleDropdowns() {
+  const allSelects = document.querySelectorAll('.vehicle-select');
+  const selectedVehicles = new Set();
+
+  // First pass: collect all selected vehicles
+  allSelects.forEach(select => {
+    if (select.value) {
+      selectedVehicles.add(select.value);
+    }
+  });
+
+  // Second pass: disable options that are selected elsewhere
+  allSelects.forEach(currentSelect => {
+    const tripCard = currentSelect.closest('.trip-card');
+    const currentTripId = tripCard.getAttribute('data-trip');
+    const currentValue = currentSelect.value;
+
+    // Get all options in this dropdown
+    const options = currentSelect.querySelectorAll('option');
+
+    options.forEach(option => {
+      if (option.value) {
+        // Check if this vehicle is selected in another trip
+        const isUsedElsewhere = Array.from(allSelects).some(select => {
+          const otherTripCard = select.closest('.trip-card');
+          const otherTripId = otherTripCard.getAttribute('data-trip');
+
+          return otherTripId !== currentTripId && select.value === option.value;
+        });
+
+        // Disable if used elsewhere and not the current selection
+        if (isUsedElsewhere && option.value !== currentValue) {
+          option.disabled = true;
+        } else {
+          option.disabled = false;
+        }
+      }
+    });
+  });
 }
 
 function removeBranchFromTrip(tripId, firstId, cbm, branchName) {
@@ -423,5 +572,60 @@ function removeBranchFromTrip(tripId, firstId, cbm, branchName) {
 function removeFromTrip(tripId, ids, cbm, documentNumber) {
   removeBranchFromTrip(tripId, ids.split(',')[0], cbm, documentNumber);
 }
+
+// Form submission validation to prevent duplicate vehicles
+document.getElementById('scheduleForm').addEventListener('submit', function(e) {
+  const allSelects = document.querySelectorAll('.vehicle-select');
+  const selectedVehicles = new Set();
+  let duplicateFound = false;
+  const tripIdsWithDuplicates = [];
+
+  allSelects.forEach(select => {
+    if (select.value) {
+      if (selectedVehicles.has(select.value)) {
+        duplicateFound = true;
+        const tripCard = select.closest('.trip-card');
+        const tripId = tripCard.getAttribute('data-trip');
+        tripIdsWithDuplicates.push(tripId);
+        const errorDiv = document.getElementById(`vehicle-error-${tripId}`);
+        if (errorDiv) {
+          errorDiv.style.display = 'block';
+          errorDiv.className = 'form-text text-danger';
+          errorDiv.textContent = 'Duplicate vehicle! Please select a different vehicle.';
+        }
+        select.classList.add('is-invalid');
+      } else {
+        selectedVehicles.add(select.value);
+      }
+    }
+  });
+
+  if (duplicateFound) {
+    e.preventDefault();
+    alert('Cannot save schedule: The same vehicle is assigned to multiple trips. Please select a different vehicle for each trip.');
+    return false;
+  }
+
+  // Check for unacknowledged schedule warnings (but allow proceeding)
+  let hasUnacknowledgedWarnings = false;
+  allSelects.forEach(select => {
+    if (select.value && select.getAttribute('data-has-schedule-warning') === 'true') {
+      const tripCard = select.closest('.trip-card');
+      const tripId = tripCard.getAttribute('data-trip');
+      const errorDiv = document.getElementById(`vehicle-error-${tripId}`);
+
+      if (errorDiv && errorDiv.style.display !== 'none') {
+        hasUnacknowledgedWarnings = true;
+      }
+    }
+  });
+
+  if (hasUnacknowledgedWarnings) {
+    if (!confirm('Warning: One or more vehicles are already scheduled for this date. Do you want to proceed anyway?')) {
+      e.preventDefault();
+      return false;
+    }
+  }
+});
 </script>
 {% endblock %}

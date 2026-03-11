@@ -1418,6 +1418,58 @@ def get_areas():
     return jsonify([area[0] for area in areas])
 
 
+@app.route('/api/vehicle_schedule_status', methods=['GET'])
+def api_vehicle_schedule_status():
+    """Check if a vehicle is already scheduled for a given date"""
+    vehicle_id = request.args.get('vehicle_id')
+    date_str = request.args.get('date')
+
+    if not vehicle_id or not date_str:
+        return jsonify({'error': 'vehicle_id and date are required'}), 400
+
+    try:
+        vehicle = Vehicle.query.get(vehicle_id)
+        if not vehicle:
+            return jsonify({'error': 'Vehicle not found'}), 404
+
+        delivery_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+
+        # Check if vehicle exists in any trip for this date
+        existing_schedules = db.session.query(Schedule, Trip, Vehicle).join(
+            Trip, Schedule.id == Trip.schedule_id
+        ).join(
+            Vehicle, Trip.vehicle_id == Vehicle.id
+        ).filter(
+            Schedule.delivery_schedule == delivery_date,
+            Vehicle.plate_number == vehicle.plate_number
+        ).all()
+
+        if existing_schedules:
+            schedule_info = []
+            for schedule, trip, vehicle in existing_schedules:
+                schedule_info.append({
+                    'schedule_id': schedule.id,
+                    'trip_number': trip.trip_number,
+                    'plate_number': vehicle.plate_number
+                })
+
+            return jsonify({
+                'is_scheduled': True,
+                'vehicle': vehicle.plate_number,
+                'date': date_str,
+                'existing_schedules': schedule_info
+            })
+        else:
+            return jsonify({
+                'is_scheduled': False,
+                'vehicle': vehicle.plate_number,
+                'date': date_str
+            })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/available_for_edit')
 def api_available_for_edit():
     """Get available shipments for editing a trip (Not Scheduled, not assigned to any trip in the schedule)"""
