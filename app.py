@@ -278,6 +278,7 @@ def upload_data():
                 return redirect(request.url)
 
             records_added = 0
+            records_skipped = 0
             for row_num, row in enumerate(csv_reader, start=2):
                 try:
                     # ✅ Use ONLY the flexible parser — remove old strptime lines!
@@ -285,6 +286,7 @@ def upload_data():
                     due_date = parse_date_flexible(row["Due Date"])
                     cbm = float(row["CBM"]) if row["CBM"] else 0.0
                     ordered_qty = float(row["Ordered Quantity"]) if row["Ordered Quantity"] else 0
+                    ordered_qty_int = int(float(row["Ordered Quantity"])) if row["Ordered Quantity"] else 0
 
                     # Helper to convert empty strings to None
                     def clean(val):
@@ -301,12 +303,23 @@ def upload_data():
                     elif not branch_name_v2:
                         branch_name_v2 = branch_name
 
+                    # Check for duplicate based on document_number, item_number, and ordered_qty
+                    existing_record = Data.query.filter_by(
+                        document_number=row["Document Number"],
+                        item_number=row["Item No."],
+                        ordered_qty=ordered_qty_int
+                    ).first()
+
+                    if existing_record:
+                        records_skipped += 1
+                        continue  # Skip this row as it's a duplicate
+
                     data_entry = Data(
                         type=row["Type"],
                         posting_date=posting_date,
                         document_number=row["Document Number"],
                         item_number=row["Item No."],
-                        ordered_qty=int(float(row["Ordered Quantity"])) if row["Ordered Quantity"] else 0,
+                        ordered_qty=ordered_qty_int,
                         delivered_qty=float(row["Delivered Quantity"]) if row["Delivered Quantity"] else 0.0,
                         remaining_open_qty=float(row["Remaining Open Qty"]) if row["Remaining Open Qty"] else 0.0,
                         from_whse_code=clean(row["From Warehouse Code"]),
@@ -342,7 +355,10 @@ def upload_data():
                     return redirect(request.url)
 
             db.session.commit()
-            flash(f"Successfully uploaded {records_added} record(s)!", 'success')
+            message = f"Successfully uploaded {records_added} record(s)!"
+            if records_skipped > 0:
+                message += f" Skipped {records_skipped} duplicate record(s)."
+            flash(message, 'success')
             return redirect(url_for('view_data'))
 
         except Exception as e:

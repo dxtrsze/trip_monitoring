@@ -58,6 +58,9 @@
         <p class="text-muted">
             ⚠️ <strong>Important:</strong> Use the <a href="{{ url_for('download_csv_template') }}">downloadable template</a> to avoid formatting errors.
         </p>
+        <p class="text-info">
+            ✅ <strong>Duplicate Prevention:</strong> Records are validated against existing data using the combination of <strong>Document Number</strong>, <strong>Item No.</strong>, and <strong>Ordered Quantity</strong>. Duplicate rows will be automatically skipped during upload.
+        </p>
     </div>
 </div>
 {% endblock %}
