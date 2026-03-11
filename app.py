@@ -1299,8 +1299,8 @@ def add_schedule():
         return redirect(url_for('view_schedule'))
     if request.method == 'POST':
         try:
-            delivery_date = datetime.strptime(request.form['delivery_schedule'], '%Y-%m-%d').date()
-            
+            delivery_date = datetime.strptime(request.form['delivery_schedule_from'], '%Y-%m-%d').date()
+
             # Create Schedule
             schedule = Schedule(delivery_schedule=delivery_date)
             db.session.add(schedule)

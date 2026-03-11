@@ -255,7 +255,7 @@ function addTrip() {
             <select name="vehicle_${tripId}" class="form-select vehicle-select" onchange="handleVehicleChange(${tripId})" required>
               <option value="">Select</option>
               {% for v in vehicles %}
-              <option value="{{ v.id }}">{{ v.plate_number }}</option>
+              <option value="{{ v.id }}" data-capacity="{{ v.capacity or 0 }}">{{ v.plate_number }}{% if v.capacity %} ({{ v.capacity }} CBM){% endif %}</option>
               {% endfor %}
             </select>
             <div class="form-text text-danger" id="vehicle-error-${tripId}" style="display:none;">This vehicle is already selected in another trip</div>
@@ -300,6 +300,7 @@ function addTrip() {
         <div>
           <strong>Total CBM:</strong> <span id="trip-${tripId}-cbm">0.00</span>
           <span class="ms-3"><strong>Total Qty:</strong> <span id="trip-${tripId}-qty">0</span></span>
+          <span class="ms-3"><strong>Total Utilization:</strong> <span id="trip-${tripId}-utilization">No vehicle selected</span></span>
         </div>
         <input type="hidden" name="trip_${tripId}_data_ids" id="trip-${tripId}-ids">
         <input type="hidden" name="trip_${tripId}_delivery_orders" id="trip-${tripId}-orders">
@@ -433,6 +434,9 @@ function assignToTrip(tripId) {
   document.getElementById(`trip-${tripId}-qty`).textContent = totalQty;
   idsInput.value = assigned.join(',');
   ordersInput.value = JSON.stringify(orders);
+
+  // Update utilization after adding shipments
+  updateTripUtilization(tripId);
 }
 
 // Function to update delivery order when input changes
@@ -468,6 +472,7 @@ function removeTrip(tripId) {
 // Handle vehicle selection change
 function handleVehicleChange(changedTripId) {
   updateVehicleDropdowns();
+  updateTripUtilization(changedTripId);
 
   // Check if the newly selected vehicle is a duplicate
   const changedSelect = document.querySelector(`.trip-card[data-trip="${changedTripId}"] .vehicle-select`);
@@ -545,6 +550,42 @@ function proceedWithVehicle(tripId) {
   errorDiv.style.display = 'none';
 }
 
+// Calculate and update trip utilization
+function updateTripUtilization(tripId) {
+  const vehicleSelect = document.querySelector(`.trip-card[data-trip="${tripId}"] .vehicle-select`);
+  const utilizationSpan = document.getElementById(`trip-${tripId}-utilization`);
+  const totalCbm = parseFloat(document.getElementById(`trip-${tripId}-cbm`).textContent) || 0;
+
+  if (!vehicleSelect.value) {
+    utilizationSpan.textContent = 'No vehicle selected';
+    utilizationSpan.className = '';
+    return;
+  }
+
+  const selectedOption = vehicleSelect.options[vehicleSelect.selectedIndex];
+  const capacity = parseFloat(selectedOption.getAttribute('data-capacity')) || 0;
+
+  if (capacity === 0) {
+    utilizationSpan.textContent = 'No capacity set';
+    utilizationSpan.className = 'text-muted';
+    return;
+  }
+
+  const utilization = (totalCbm / capacity) * 100;
+  utilizationSpan.textContent = utilization.toFixed(1) + '%';
+
+  // Color code based on utilization
+  if (utilization > 100) {
+    utilizationSpan.className = 'text-danger fw-bold';
+  } else if (utilization > 90) {
+    utilizationSpan.className = 'text-warning fw-bold';
+  } else if (utilization > 75) {
+    utilizationSpan.className = 'text-success';
+  } else {
+    utilizationSpan.className = 'text-info';
+  }
+}
+
 // Update vehicle dropdowns to disable already-selected vehicles
 function updateVehicleDropdowns() {
   const allSelects = document.querySelectorAll('.vehicle-select');
@@ -619,6 +660,9 @@ function removeBranchFromTrip(tripId, firstId, cbm, branchName, qty) {
   const currentQty = parseInt(document.getElementById(`trip-${tripId}-qty`).textContent) || 0;
   const newQty = currentQty - (qty || 0);
   document.getElementById(`trip-${tripId}-qty`).textContent = Math.max(0, newQty);
+
+  // Update utilization after removing shipments
+  updateTripUtilization(tripId);
 
   // Re-enable all checkboxes for this branch in the main list
   allIds.forEach(id => {

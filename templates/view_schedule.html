@@ -27,6 +27,20 @@
           <h6 class="mb-0">
             Trip #{{ trip.trip_number }}
             <span class="badge bg-secondary">CBM: {{ "%.2f"|format(trip.total_cbm) }}</span>
+            {% if trip.vehicle.capacity %}
+            {% set utilization = (trip.total_cbm / trip.vehicle.capacity * 100) %}
+            {% if utilization > 100 %}
+            <span class="badge bg-danger fw-bold">Utilization: {{ "%.1f"|format(utilization) }}%</span>
+            {% elif utilization > 90 %}
+            <span class="badge bg-warning fw-bold">Utilization: {{ "%.1f"|format(utilization) }}%</span>
+            {% elif utilization > 75 %}
+            <span class="badge bg-success">Utilization: {{ "%.1f"|format(utilization) }}%</span>
+            {% else %}
+            <span class="badge bg-info">Utilization: {{ "%.1f"|format(utilization) }}%</span>
+            {% endif %}
+            {% else %}
+            <span class="badge bg-secondary">No capacity set</span>
+            {% endif %}
           </h6>
           {% if current_user.position == 'admin' %}
           <div class="btn-group btn-group-sm" role="group">
