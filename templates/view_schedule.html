@@ -13,10 +13,16 @@
 </div>
 
 {% for schedule in schedules %}
-<div class="card mb-4">
-  <div class="card-header">
-    <h5>{{ schedule.delivery_schedule.strftime('%B %d, %Y') }} 
+<div class="card mb-4 {% if schedule.delivery_schedule < today %}border-warning{% endif %}">
+  <div class="card-header {% if schedule.delivery_schedule < today %}bg-warning text-dark{% endif %}">
+    <h5>
+      {{ schedule.delivery_schedule.strftime('%B %d, %Y') }}
       <span class="badge bg-info">Schedule #{{ schedule.id }}</span>
+      {% if schedule.delivery_schedule < today %}
+      <span class="badge bg-danger ms-2">Incomplete Trip</span>
+      {% else %}
+      <span class="badge bg-success ms-2">Today</span>
+      {% endif %}
     </h5>
   </div>
   <div class="card-body">

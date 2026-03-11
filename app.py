@@ -1259,26 +1259,80 @@ def search_scheduled():
 @app.route('/schedules')
 @login_required
 def view_schedule():
+    from sqlalchemy import or_
+
+    # Get today's date
+    today = datetime.now().date()
+
     if current_user.position == 'admin':
-        # Admins see all schedules
-        schedules = Schedule.query.order_by(Schedule.delivery_schedule.desc()).all()
+        # Admins see:
+        # 1. Today's scheduled trips
+        # 2. Incomplete trips from prior days (where departure is NULL)
+
+        # Get today's schedules
+        todays_schedules = Schedule.query.filter(
+            Schedule.delivery_schedule == today
+        ).all()
+
+        # Get incomplete trips from prior days
+        # Find trips that have at least one detail with NULL departure
+        prior_incomplete_trips = db.session.query(Trip).join(
+            Schedule, Trip.schedule_id == Schedule.id
+        ).join(
+            TripDetail, Trip.id == TripDetail.trip_id
+        ).filter(
+            Schedule.delivery_schedule < today,  # Prior days only
+            TripDetail.departure == None,  # Incomplete trips
+        ).distinct().all()
+
+        # Get schedule IDs from incomplete trips
+        prior_schedule_ids = list(set([trip.schedule_id for trip in prior_incomplete_trips]))
+
+        # Get prior schedules with incomplete trips
+        prior_schedules = Schedule.query.filter(
+            Schedule.id.in_(prior_schedule_ids)
+        ).all()
+
+        # Combine both lists (avoid duplicates)
+        all_schedule_ids = list(set([s.id for s in todays_schedules] + prior_schedule_ids))
+        schedules = Schedule.query.filter(Schedule.id.in_(all_schedule_ids)).order_by(Schedule.delivery_schedule.desc()).all()
+
     else:
         # Regular users only see schedules where they are assigned
         # Get the user's associated manpower entry
         user_manpower = getattr(current_user, 'manpower', None)
 
         if user_manpower:
-            # Find all trips where this manpower is a driver or assistant
-            trips = Trip.query.filter(
-                db.or_(
-                    Trip.drivers.any(id=user_manpower.id),
-                    Trip.assistants.any(id=user_manpower.id)
+            # Today's trips where user is assigned as driver or assistant
+            todays_trips = Trip.query.filter(
+                db.and_(
+                    db.or_(
+                        Trip.drivers.any(id=user_manpower.id),
+                        Trip.assistants.any(id=user_manpower.id)
+                    ),
+                    Trip.schedule.has(Schedule.delivery_schedule == today)
                 )
             ).all()
 
-            # Get unique schedules from these trips
-            schedule_ids = list(set([trip.schedule_id for trip in trips]))
-            schedules = Schedule.query.filter(Schedule.id.in_(schedule_ids)).order_by(Schedule.delivery_schedule.desc()).all()
+            # Incomplete trips from prior days where user is assigned
+            prior_incomplete_trips = Trip.query.join(
+                Schedule, Trip.schedule_id == Schedule.id
+            ).join(
+                TripDetail, Trip.id == TripDetail.trip_id
+            ).filter(
+                db.and_(
+                    Schedule.delivery_schedule < today,  # Prior days only
+                    TripDetail.departure == None,  # Incomplete trips
+                    db.or_(
+                        Trip.drivers.any(id=user_manpower.id),
+                        Trip.assistants.any(id=user_manpower.id)
+                    )
+                )
+            ).distinct().all()
+
+            # Get all schedule IDs
+            all_schedule_ids = list(set([trip.schedule_id for trip in todays_trips] + [trip.schedule_id for trip in prior_incomplete_trips]))
+            schedules = Schedule.query.filter(Schedule.id.in_(all_schedule_ids)).order_by(Schedule.delivery_schedule.desc()).all()
         else:
             # User has no associated manpower entry - show no schedules
             schedules = []
@@ -1288,7 +1342,7 @@ def view_schedule():
         for trip in schedule.trips:
             trip.details = sorted(trip.details, key=lambda d: (d.delivery_order is None, d.delivery_order or 999))
 
-    return render_template('view_schedule.html', schedules=schedules)
+    return render_template('view_schedule.html', schedules=schedules, today=today)
 
 
 @app.route('/schedules/add', methods=['GET', 'POST'])
