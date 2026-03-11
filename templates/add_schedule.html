@@ -199,7 +199,7 @@ function renderShipments() {
 
     html += `
       <tr class="shipment-row ${isAssigned ? 'table-secondary' : ''}" data-shipment-id="${item.data_ids[0]}">
-        <td><input type="checkbox" class="shipment-checkbox" data-ids="${item.data_ids.join(',')}" data-cbm="${item.total_cbm}" data-branch="${item.branch}" data-doc-number="${item.document_number}" ${isAssigned ? 'disabled' : ''}></td>
+        <td><input type="checkbox" class="shipment-checkbox" data-ids="${item.data_ids.join(',')}" data-cbm="${item.total_cbm}" data-qty="${item.ordered_qty}" data-branch="${item.branch}" data-doc-number="${item.document_number}" ${isAssigned ? 'disabled' : ''}></td>
         <td>${item.document_number} ${isAssigned ? '<span class="badge bg-secondary ms-1">Assigned</span>' : ''}</td>
         <td>${item.branch}</td>
         <td>${item.area}</td>
@@ -294,10 +294,13 @@ function addTrip() {
           <div id="trip-${tripId}-shipments" class="border p-2" style="max-height:150px;overflow-y:auto;">
             <p class="text-muted mb-0">Select shipments above, then click "Assign to Trip ${tripId}"</p>
           </div>
-          <button type="button" class="btn btn-sm btn-outline-primary mt-2" 
+          <button type="button" class="btn btn-sm btn-outline-primary mt-2"
                   onclick="assignToTrip(${tripId})">Assign Selected to Trip ${tripId}</button>
         </div>
-        <div><strong>Total CBM:</strong> <span id="trip-${tripId}-cbm">0.00</span></div>
+        <div>
+          <strong>Total CBM:</strong> <span id="trip-${tripId}-cbm">0.00</span>
+          <span class="ms-3"><strong>Total Qty:</strong> <span id="trip-${tripId}-qty">0</span></span>
+        </div>
         <input type="hidden" name="trip_${tripId}_data_ids" id="trip-${tripId}-ids">
         <input type="hidden" name="trip_${tripId}_delivery_orders" id="trip-${tripId}-orders">
       </div>
@@ -313,9 +316,11 @@ function assignToTrip(tripId) {
   const idsInput = document.getElementById(`trip-${tripId}-ids`);
   const ordersInput = document.getElementById(`trip-${tripId}-orders`);
   let totalCbm = 0;
+  let totalQty = 0;
 
-  // Get current CBM, IDs, and orders from the trip
+  // Get current CBM, Qty, IDs, and orders from the trip
   const currentCbm = parseFloat(document.getElementById(`trip-${tripId}-cbm`).textContent) || 0;
+  const currentQty = parseInt(document.getElementById(`trip-${tripId}-qty`).textContent) || 0;
   const currentIds = idsInput.value ? idsInput.value.split(',') : [];
   const currentOrders = ordersInput.value ? JSON.parse(ordersInput.value) : {};
 
@@ -323,6 +328,7 @@ function assignToTrip(tripId) {
   let assigned = [...currentIds];
   let orders = {...currentOrders};
   totalCbm = currentCbm;
+  totalQty = currentQty;
 
   // Auto-increment order for new shipments
   const maxOrder = Object.keys(orders).length > 0 ? Math.max(...Object.values(orders).map(Number)) : 0;
@@ -334,6 +340,7 @@ function assignToTrip(tripId) {
   checkboxes.forEach(cb => {
     const ids = cb.dataset.ids;
     const cbm = parseFloat(cb.dataset.cbm);
+    const qty = parseInt(cb.dataset.qty) || 0;
     const branchName = cb.dataset.branch;
     const documentNumber = cb.dataset.docNumber;
 
@@ -347,6 +354,7 @@ function assignToTrip(tripId) {
         // Add to assigned list
         assigned.push(...newIds);
         totalCbm += cbm;
+        totalQty += qty;
 
         // Group by branch
         if (!branchGroups[branchName]) {
@@ -354,6 +362,7 @@ function assignToTrip(tripId) {
             dataIds: [],
             allDataIds: [],  // Track all IDs for this branch
             cbm: 0,
+            qty: 0,
             docNumbers: []
           };
         }
@@ -361,6 +370,7 @@ function assignToTrip(tripId) {
         branchGroups[branchName].dataIds.push(newIds[0]);  // First ID for order key
         branchGroups[branchName].allDataIds.push(...newIds);  // All IDs for removal
         branchGroups[branchName].cbm += cbm;
+        branchGroups[branchName].qty += qty;
         branchGroups[branchName].docNumbers.push(documentNumber);
 
         // Mark checkboxes as assigned
@@ -402,7 +412,7 @@ function assignToTrip(tripId) {
       : group.docNumbers.join(', ');
 
     tripContainer.innerHTML += `
-      <div class="d-flex justify-content-between align-items-center small" id="${shipmentId}" data-branch="${branchName}" data-all-ids="${group.allDataIds.join(',')}">
+      <div class="d-flex justify-content-between align-items-center small" id="${shipmentId}" data-branch="${branchName}" data-all-ids="${group.allDataIds.join(',')}" data-qty="${group.qty}">
         <div>
           <strong>${branchName}</strong>
           <span class="text-muted">(${docDisplay})</span>
@@ -414,12 +424,13 @@ function assignToTrip(tripId) {
                  style="width: 70px;"
                  onchange="updateDeliveryOrder(${tripId}, '${firstId}', this.value)">
           <span>${group.cbm.toFixed(2)}</span>
-          <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeBranchFromTrip(${tripId}, '${firstId}', ${group.cbm}, '${branchName}')">Remove</button>
+          <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeBranchFromTrip(${tripId}, '${firstId}', ${group.cbm}, '${branchName}', ${group.qty})">Remove</button>
         </div>
       </div>`;
   }
 
   document.getElementById(`trip-${tripId}-cbm`).textContent = totalCbm.toFixed(2);
+  document.getElementById(`trip-${tripId}-qty`).textContent = totalQty;
   idsInput.value = assigned.join(',');
   ordersInput.value = JSON.stringify(orders);
 }
@@ -576,7 +587,7 @@ function updateVehicleDropdowns() {
   });
 }
 
-function removeBranchFromTrip(tripId, firstId, cbm, branchName) {
+function removeBranchFromTrip(tripId, firstId, cbm, branchName, qty) {
   // Remove from the trip's shipment list
   const shipmentId = `shipment-${firstId}`;
   const element = document.getElementById(shipmentId);
@@ -604,6 +615,11 @@ function removeBranchFromTrip(tripId, firstId, cbm, branchName) {
   const newCbm = currentCbm - cbm;
   document.getElementById(`trip-${tripId}-cbm`).textContent = newCbm.toFixed(2);
 
+  // Update the Qty total
+  const currentQty = parseInt(document.getElementById(`trip-${tripId}-qty`).textContent) || 0;
+  const newQty = currentQty - (qty || 0);
+  document.getElementById(`trip-${tripId}-qty`).textContent = Math.max(0, newQty);
+
   // Re-enable all checkboxes for this branch in the main list
   allIds.forEach(id => {
     const checkbox = document.querySelector(`.shipment-checkbox[data-ids*="${id}"]`);
@@ -629,8 +645,8 @@ function removeBranchFromTrip(tripId, firstId, cbm, branchName) {
 }
 
 // Keep old function name for backward compatibility
-function removeFromTrip(tripId, ids, cbm, documentNumber) {
-  removeBranchFromTrip(tripId, ids.split(',')[0], cbm, documentNumber);
+function removeFromTrip(tripId, ids, cbm, documentNumber, qty = 0) {
+  removeBranchFromTrip(tripId, ids.split(',')[0], cbm, documentNumber, qty);
 }
 
 // Form submission validation to prevent duplicate vehicles

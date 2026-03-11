@@ -1525,6 +1525,7 @@ def api_not_scheduled():
         documents.append({
             'document_number': row.document_number,
             'total_cbm': float(row.total_cbm) if row.total_cbm else 0.0,
+            'ordered_qty': int(row.ordered_qty) if row.ordered_qty else 0,
             'branch': branch,
             'area': area,
             'due_date': row.due_date.strftime('%Y-%m-%d') if row.due_date else '',
