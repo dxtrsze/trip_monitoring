@@ -159,7 +159,7 @@ function renderShipments() {
     const isAssigned = document.querySelector(`#tripsContainer [data-ids*="${item.data_ids[0]}"]`) ? true : false;
 
     html += `
-      <tr ${isAssigned ? 'class="table-secondary"' : ''}>
+      <tr class="shipment-row ${isAssigned ? 'table-secondary' : ''}" data-shipment-id="${item.data_ids[0]}">
         <td><input type="checkbox" class="shipment-checkbox" data-ids="${item.data_ids.join(',')}" data-cbm="${item.total_cbm}" data-branch="${item.branch}" data-doc-number="${item.document_number}" ${isAssigned ? 'disabled' : ''}></td>
         <td>${item.document_number} ${isAssigned ? '<span class="badge bg-secondary ms-1">Assigned</span>' : ''}</td>
         <td>${item.branch}</td>
@@ -170,6 +170,24 @@ function renderShipments() {
   });
   html += '</tbody></table></div>';
   container.innerHTML = html;
+
+  // Add event listeners to checkboxes for row highlighting
+  container.querySelectorAll('.shipment-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      const row = this.closest('tr');
+      if (this.checked) {
+        row.classList.add('table-primary');
+        row.classList.remove('table-secondary');
+      } else {
+        row.classList.remove('table-primary');
+        // Re-add table-secondary if it was assigned before
+        const isAssigned = row.querySelector('.badge');
+        if (isAssigned) {
+          row.classList.add('table-secondary');
+        }
+      }
+    });
+  });
 }
 
 document.getElementById('addTripBtn').addEventListener('click', addTrip);
@@ -309,6 +327,7 @@ function assignToTrip(tripId) {
         // Mark checkboxes as assigned
         const row = cb.closest('tr');
         if (row) {
+          row.classList.remove('table-primary'); // Remove selection highlight
           row.classList.add('table-secondary');
           cb.disabled = true;
 
@@ -559,6 +578,8 @@ function removeBranchFromTrip(tripId, firstId, cbm, branchName) {
 
         if (!anyStillAssigned) {
           row.classList.remove('table-secondary');
+          // Also remove table-primary if it was still selected
+          row.classList.remove('table-primary');
           const docCell = row.cells[1];
           const badge = docCell.querySelector('.badge');
           if (badge) badge.remove();
