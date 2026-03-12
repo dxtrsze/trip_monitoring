@@ -1265,37 +1265,8 @@ def view_schedule():
     today = datetime.now().date()
 
     if current_user.position == 'admin':
-        # Admins see:
-        # 1. Today's scheduled trips
-        # 2. Incomplete trips from prior days (where departure is NULL)
-
-        # Get today's schedules
-        todays_schedules = Schedule.query.filter(
-            Schedule.delivery_schedule == today
-        ).all()
-
-        # Get incomplete trips from prior days
-        # Find trips that have at least one detail with NULL departure
-        prior_incomplete_trips = db.session.query(Trip).join(
-            Schedule, Trip.schedule_id == Schedule.id
-        ).join(
-            TripDetail, Trip.id == TripDetail.trip_id
-        ).filter(
-            Schedule.delivery_schedule < today,  # Prior days only
-            TripDetail.departure == None,  # Incomplete trips
-        ).distinct().all()
-
-        # Get schedule IDs from incomplete trips
-        prior_schedule_ids = list(set([trip.schedule_id for trip in prior_incomplete_trips]))
-
-        # Get prior schedules with incomplete trips
-        prior_schedules = Schedule.query.filter(
-            Schedule.id.in_(prior_schedule_ids)
-        ).all()
-
-        # Combine both lists (avoid duplicates)
-        all_schedule_ids = list(set([s.id for s in todays_schedules] + prior_schedule_ids))
-        schedules = Schedule.query.filter(Schedule.id.in_(all_schedule_ids)).order_by(Schedule.delivery_schedule.desc()).all()
+        # Admins see all schedules (past, today, and future)
+        schedules = Schedule.query.order_by(Schedule.delivery_schedule.desc()).all()
 
     else:
         # Regular users only see schedules where they are assigned
