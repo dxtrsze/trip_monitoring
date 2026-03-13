@@ -3616,7 +3616,22 @@ def daily_vehicle_counts():
 
     # Get all daily vehicle counts, ordered by date descending
     counts = DailyVehicleCount.query.order_by(DailyVehicleCount.date.desc()).all()
-    return render_template('daily_vehicle_counts.html', counts=counts)
+
+    # Check scheduler status
+    scheduler_running = scheduler is not None
+    next_run_time = None
+    if scheduler and scheduler_running:
+        try:
+            jobs = scheduler.get_jobs()
+            if jobs:
+                next_run_time = jobs[0].next_run_time
+        except:
+            pass
+
+    return render_template('daily_vehicle_counts.html',
+                         counts=counts,
+                         scheduler_running=scheduler_running,
+                         next_run_time=next_run_time)
 
 
 @app.route('/run_vehicle_count', methods=['POST'])
@@ -3807,6 +3822,37 @@ def init_scheduler():
 
 # Initialize scheduler when app starts
 scheduler = init_scheduler()
+
+
+@app.route('/admin/scheduler_status')
+@login_required
+def scheduler_status():
+    """Check if scheduler is running"""
+    if current_user.position != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+
+    scheduler_status = {
+        'scheduler_running': scheduler is not None,
+        'apscheduler_installed': False,
+        'next_run_time': None,
+        'jobs': []
+    }
+
+    if scheduler:
+        try:
+            scheduler_status['apscheduler_installed'] = True
+            scheduler_status['jobs'] = [
+                {
+                    'id': job.id,
+                    'name': job.name,
+                    'next_run_time': job.next_run_time.isoformat() if job.next_run_time else None
+                }
+                for job in scheduler.get_jobs()
+            ]
+        except Exception as e:
+            scheduler_status['error'] = str(e)
+
+    return jsonify(scheduler_status)
 
 
 @app.route('/admin/test_vehicle_count')
