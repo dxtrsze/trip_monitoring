@@ -52,6 +52,7 @@ class Data(db.Model):
     status = db.Column(db.String(50)) # "Not Scheduled", "Scheduled", "Cancelled", "Deleted"
     delivery_type = db.Column(db.String(100), nullable=True)  # Delivery type
     delete_remarks = db.Column(db.String(255), nullable=True)  # Reason for deletion
+    detailed_remarks = db.Column(db.Text, nullable=True)  # Detailed remarks for deletion (long text)
 
     def __repr__(self):
         return f'<Data {self.document_number}>'

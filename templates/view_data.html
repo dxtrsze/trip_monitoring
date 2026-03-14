@@ -118,6 +118,11 @@
               <option value="CUSTOMER REQUEST">CUSTOMER REQUEST</option>
             </select>
           </div>
+          <div class="mb-3">
+            <label for="detailedRemarks" class="form-label">Detailed Remarks (Optional)</label>
+            <textarea class="form-control" id="detailedRemarks" name="detailed_remarks" rows="4" placeholder="Enter detailed explanation for deletion..."></textarea>
+            <div class="form-text">Provide additional details about why this record is being deleted.</div>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -160,6 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('deleteDataId').value = dataId;
             document.getElementById('deleteDocumentNumber').value = documentNumber;
             document.getElementById('deleteRemarks').value = '';
+            document.getElementById('detailedRemarks').value = '';
 
             deleteDataModal.show();
         });
@@ -171,6 +177,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const dataId = document.getElementById('deleteDataId').value;
         const deleteRemarks = document.getElementById('deleteRemarks').value;
+        const detailedRemarks = document.getElementById('detailedRemarks').value;
 
         if (!deleteRemarks) {
             alert('Please select a reason for deletion');
@@ -188,7 +195,8 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             body: JSON.stringify({
                 data_id: dataId,
-                delete_remarks: deleteRemarks
+                delete_remarks: deleteRemarks,
+                detailed_remarks: detailedRemarks
             })
         })
         .then(response => response.json())
@@ -212,6 +220,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('deleteDataId').value = '';
         document.getElementById('deleteDocumentNumber').value = '';
         document.getElementById('deleteRemarks').value = '';
+        document.getElementById('detailedRemarks').value = '';
     });
 });
 </script>

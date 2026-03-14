@@ -541,6 +541,7 @@ def soft_delete_data():
         data = request.get_json()
         data_id = data.get('data_id')
         delete_remarks = data.get('delete_remarks')
+        detailed_remarks = data.get('detailed_remarks')
 
         if not data_id:
             return jsonify({'success': False, 'message': 'Data ID is required'}), 400
@@ -554,6 +555,7 @@ def soft_delete_data():
         # Soft delete by updating status
         data_record.status = "Deleted"
         data_record.delete_remarks = delete_remarks
+        data_record.detailed_remarks = detailed_remarks
 
         db.session.commit()
 
