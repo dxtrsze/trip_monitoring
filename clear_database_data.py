@@ -1,138 +1,162 @@
 #!/usr/bin/env python3
 """
-Script to delete all data from trip_monitoring.db
+Script to delete all data from trip_monitoring database
 Preserves: user, vehicle, cluster, manpower tables
 Deletes: all other table data
+
+Database-agnostic version using SQLAlchemy ORM
+Compatible with SQLite, PostgreSQL, and other databases
 """
 
-import sqlite3
+import sys
 import os
 from datetime import datetime
 
+# Add the current directory to Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from app import app, db
+from models import (
+    TripDetail, Trip, Schedule, Data, Backload,
+    Odo, DailyVehicleCount, User, Vehicle, Cluster, Manpower
+)
+
+def get_model_class(table_name):
+    """Map table name to SQLAlchemy model class"""
+    model_map = {
+        'trip_detail': TripDetail,
+        'trip': Trip,
+        'schedule': Schedule,
+        'data': Data,
+        'backload': Backload,
+        'odo': Odo,
+        'daily_vehicle_count': DailyVehicleCount,
+        'user': User,
+        'vehicle': Vehicle,
+        'cluster': Cluster,
+        'manpower': Manpower,
+    }
+    return model_map.get(table_name)
+
 def clear_database():
-    db_path = 'instance/trip_monitoring.db'
-
-    if not os.path.exists(db_path):
-        print(f"Database file {db_path} not found!")
-        return False
-
+    """Clear database data using SQLAlchemy ORM"""
     print(f"Starting database cleanup: {datetime.now()}")
-    print(f"Database: {db_path}")
+    print(f"Database: SQLAlchemy ORM (Database-Agnostic)")
 
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
+    with app.app_context():
+        try:
+            # Define table processing order (respecting foreign key dependencies)
+            # Tables to preserve (not to be deleted)
+            preserve_tables = {'user', 'vehicle', 'cluster', 'manpower'}
 
-    try:
-        # Disable foreign key constraints temporarily for faster deletion
-        cursor.execute("PRAGMA foreign_keys = OFF")
+            # Tables to clear, in dependency order (children first)
+            tables_to_clear = [
+                ('trip_driver', 'Association table: trip_driver'),
+                ('trip_assistant', 'Association table: trip_assistant'),
+                ('trip_detail', 'TripDetail'),
+                ('trip', 'Trip'),
+                ('schedule', 'Schedule'),
+                ('data', 'Data'),
+                ('backload', 'Backload'),
+                ('odo', 'Odo'),
+                ('daily_vehicle_count', 'DailyVehicleCount'),
+            ]
 
-        # Get all table names
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-        all_tables = [row[0] for row in cursor.fetchall()]
+            print(f"\nTables to preserve: {', '.join(sorted(preserve_tables))}")
+            print(f"Tables to clear: {', '.join([t[0] for t in tables_to_clear])}")
 
-        # Tables to preserve
-        preserve_tables = {'user', 'vehicle', 'cluster', 'manpower'}
+            # Count rows before deletion
+            total_rows = 0
+            print(f"\nRows before deletion:")
+            for table_name, description in tables_to_clear:
+                model_class = get_model_class(table_name)
+                if model_class:
+                    count = db.session.query(model_class).count()
+                    total_rows += count
+                    print(f"  {table_name}: {count:,} rows ({description})")
+                else:
+                    # For association tables without model classes, use raw SQL
+                    result = db.session.execute(db.text(f"SELECT COUNT(*) FROM {table_name}"))
+                    count = result.scalar()
+                    total_rows += count
+                    print(f"  {table_name}: {count:,} rows ({description})")
 
-        # Tables to delete (exclude sqlite system tables and preserved tables)
-        tables_to_clear = [t for t in all_tables if not t.startswith('sqlite_') and t not in preserve_tables]
+            print(f"\nTotal rows to delete: {total_rows:,}")
 
-        print(f"\nTables to preserve: {', '.join(sorted(preserve_tables))}")
-        print(f"Tables to clear: {', '.join(sorted(tables_to_clear))}")
+            # Delete data in order
+            print(f"\nDeleting data:")
 
-        # Count rows before deletion
-        total_rows = 0
-        for table in tables_to_clear:
-            cursor.execute(f"SELECT COUNT(*) FROM {table}")
-            count = cursor.fetchone()[0]
-            total_rows += count
-            print(f"  {table}: {count} rows")
+            for table_name, description in tables_to_clear:
+                try:
+                    model_class = get_model_class(table_name)
 
-        print(f"\nTotal rows to delete: {total_rows}")
+                    if model_class:
+                        # Use SQLAlchemy ORM for models
+                        deleted_count = db.session.query(model_class).delete()
+                        db.session.flush()  # Flush to execute without committing yet
+                        print(f"✓ Cleared {table_name}: {deleted_count:,} rows deleted")
+                    else:
+                        # Use raw SQL for association tables
+                        result = db.session.execute(db.text(f"DELETE FROM {table_name}"))
+                        deleted_count = result.rowcount
+                        db.session.flush()
+                        print(f"✓ Cleared {table_name}: {deleted_count:,} rows deleted")
 
-        # Delete data in order (child tables first, then parent tables)
-        # Association tables first
-        association_tables = ['trip_driver', 'trip_assistant']
-        for table in association_tables:
-            if table in tables_to_clear:
-                cursor.execute(f"DELETE FROM {table}")
-                print(f"✓ Cleared {table}")
+                except Exception as e:
+                    print(f"✗ Error clearing {table_name}: {e}")
+                    raise
 
-        # Trip details
-        if 'trip_detail' in tables_to_clear:
-            cursor.execute("DELETE FROM trip_detail")
-            print("✓ Cleared trip_detail")
+            # Verify preserved tables still have data
+            print(f"\nVerifying preserved tables:")
+            preserved_models = [
+                ('user', User),
+                ('vehicle', Vehicle),
+                ('cluster', Cluster),
+                ('manpower', Manpower),
+            ]
 
-        # Trips
-        if 'trip' in tables_to_clear:
-            cursor.execute("DELETE FROM trip")
-            print("✓ Cleared trip")
+            for table_name, model_class in preserved_models:
+                count = db.session.query(model_class).count()
+                status = "✓" if count > 0 else "⚠"
+                print(f"  {table_name}: {count:,} rows {status}")
 
-        # Schedules
-        if 'schedule' in tables_to_clear:
-            cursor.execute("DELETE FROM schedule")
-            print("✓ Cleared schedule")
+            # Verify cleared tables are empty
+            print(f"\nVerifying cleared tables are empty:")
+            all_empty = True
+            for table_name, description in tables_to_clear:
+                model_class = get_model_class(table_name)
+                if model_class:
+                    count = db.session.query(model_class).count()
+                else:
+                    result = db.session.execute(db.text(f"SELECT COUNT(*) FROM {table_name}"))
+                    count = result.scalar()
 
-        # Data tables
-        data_tables = ['data', 'backload']
-        for table in data_tables:
-            if table in tables_to_clear:
-                cursor.execute(f"DELETE FROM {table}")
-                print(f"✓ Cleared {table}")
+                status = "✓" if count == 0 else "✗"
+                print(f"  {table_name}: {count:,} rows {status}")
+                if count > 0:
+                    all_empty = False
 
-        # Odo readings
-        if 'odo' in tables_to_clear:
-            cursor.execute("DELETE FROM odo")
-            print("✓ Cleared odo")
+            # Commit the changes
+            db.session.commit()
 
-        # Daily vehicle counts
-        if 'daily_vehicle_count' in tables_to_clear:
-            cursor.execute("DELETE FROM daily_vehicle_count")
-            print("✓ Cleared daily_vehicle_count")
+            if all_empty:
+                print("\n✓ Database cleanup completed successfully!")
+                print(f"✓ Preserved data in: {', '.join(sorted(preserve_tables))}")
+                return True
+            else:
+                print("\n⚠ Some tables still contain data")
+                return False
 
-        # Re-enable foreign key constraints
-        cursor.execute("PRAGMA foreign_keys = ON")
-
-        # Verify preserved tables still have data
-        print(f"\nVerifying preserved tables:")
-        for table in sorted(preserve_tables):
-            if table in all_tables:
-                cursor.execute(f"SELECT COUNT(*) FROM {table}")
-                count = cursor.fetchone()[0]
-                print(f"  {table}: {count} rows ✓")
-
-        # Verify cleared tables are empty
-        print(f"\nVerifying cleared tables are empty:")
-        all_empty = True
-        for table in sorted(tables_to_clear):
-            cursor.execute(f"SELECT COUNT(*) FROM {table}")
-            count = cursor.fetchone()[0]
-            status = "✓" if count == 0 else "✗"
-            print(f"  {table}: {count} rows {status}")
-            if count > 0:
-                all_empty = False
-
-        # Commit the changes
-        conn.commit()
-
-        if all_empty:
-            print("\n✓ Database cleanup completed successfully!")
-            print(f"✓ Preserved data in: {', '.join(sorted(preserve_tables))}")
-            return True
-        else:
-            print("\n⚠ Some tables still contain data")
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error during cleanup: {e}")
+            import traceback
+            traceback.print_exc()
             return False
-
-    except sqlite3.Error as e:
-        conn.rollback()
-        print(f"Error during cleanup: {e}")
-        return False
-
-    finally:
-        conn.close()
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("DATABASE CLEANUP SCRIPT")
+    print("DATABASE CLEANUP SCRIPT (SQLAlchemy ORM)")
     print("=" * 60)
     print("\n⚠ WARNING: This will DELETE data from most tables!")
     print("Preserved tables: user, vehicle, cluster, manpower")

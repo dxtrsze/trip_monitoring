@@ -3755,33 +3755,48 @@ def export_daily_vehicle_counts():
 # Scheduler for daily vehicle count
 def count_daily_active_vehicles():
     """Count active vehicles and save to DailyVehicleCount table"""
-    try:
-        from models import DailyVehicleCount
-        today = datetime.now().date()
+    with app.app_context():
+        try:
+            from models import DailyVehicleCount
+            from sqlalchemy.exc import IntegrityError
+            today = datetime.now().date()
 
-        # Check if record already exists for today
-        existing_count = DailyVehicleCount.query.filter_by(date=today).first()
+            # Count active vehicles
+            active_count = Vehicle.query.filter_by(status='Active').count()
 
-        # Count active vehicles
-        active_count = Vehicle.query.filter_by(status='Active').count()
+            # Check if record already exists for today
+            existing_count = DailyVehicleCount.query.filter_by(date=today).first()
 
-        if existing_count:
-            # Update existing record
-            existing_count.qty = active_count
-            print(f"[{datetime.now()}] Updated daily vehicle count for {today}: {active_count} active vehicles")
-        else:
-            # Create new record
-            daily_count = DailyVehicleCount(date=today, qty=active_count)
-            db.session.add(daily_count)
-            print(f"[{datetime.now()}] Created daily vehicle count for {today}: {active_count} active vehicles")
+            if existing_count:
+                # Update existing record
+                existing_count.qty = active_count
+                db.session.commit()
+                print(f"[{datetime.now()}] Updated daily vehicle count for {today}: {active_count} active vehicles")
+            else:
+                # Create new record
+                try:
+                    daily_count = DailyVehicleCount(date=today, qty=active_count)
+                    db.session.add(daily_count)
+                    db.session.commit()
+                    print(f"[{datetime.now()}] Created daily vehicle count for {today}: {active_count} active vehicles")
+                except IntegrityError:
+                    # Handle race condition - another process created the record
+                    db.session.rollback()
+                    existing_count = DailyVehicleCount.query.filter_by(date=today).first()
+                    if existing_count:
+                        existing_count.qty = active_count
+                        db.session.commit()
+                        print(f"[{datetime.now()}] Race condition handled - updated daily vehicle count for {today}: {active_count} active vehicles")
+                    else:
+                        print(f"[{datetime.now()}] Error: Could not create or update daily vehicle count for {today}")
+                        return False
 
-        db.session.commit()
-        return True
+            return True
 
-    except Exception as e:
-        db.session.rollback()
-        print(f"[{datetime.now()}] Error counting daily vehicles: {str(e)}")
-        return False
+        except Exception as e:
+            db.session.rollback()
+            print(f"[{datetime.now()}] Error counting daily vehicles: {str(e)}")
+            return False
 
 
 # Initialize and start scheduler
@@ -3791,21 +3806,24 @@ def init_scheduler():
         from apscheduler.schedulers.background import BackgroundScheduler
         from apscheduler.triggers.cron import CronTrigger
         import atexit
+        from pytz import timezone
 
         scheduler = BackgroundScheduler()
+        manila_tz = timezone('Asia/Manila')
 
-        # Schedule job to run every day at 5:00 AM
+        # Schedule job to run every day at 5:00 AM Manila time
         scheduler.add_job(
             func=count_daily_active_vehicles,
-            trigger=CronTrigger(hour=5, minute=0),
+            trigger=CronTrigger(hour=5, minute=0, timezone=manila_tz),
             id='daily_vehicle_count',
             name='Count daily active vehicles',
-            replace_existing=True
+            replace_existing=True,
+            max_instances=1  # Prevent multiple instances running simultaneously
         )
 
         # Start the scheduler
         scheduler.start()
-        print(f"[{datetime.now()}] Scheduler started. Daily vehicle count will run at 5:00 AM daily.")
+        print(f"[{datetime.now()}] Scheduler started. Daily vehicle count will run at 5:00 AM Manila time daily.")
 
         # Shut down the scheduler when exiting the app
         atexit.register(lambda: scheduler.shutdown())

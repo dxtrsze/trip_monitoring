@@ -21,9 +21,9 @@
     <div>
       <strong>Scheduler Active:</strong> Automatic daily vehicle counting is enabled.
       {% if next_run_time %}
-        Next scheduled run: <strong>{{ next_run_time.strftime('%Y-%m-%d %H:%M:%S') }}</strong>
+        Next scheduled run: <strong>{{ next_run_time.strftime('%Y-%m-%d %H:%M:%S') }}</strong> (Manila Time)
       {% else %}
-        Runs daily at 5:00 AM
+        Runs daily at 5:00 AM Manila Time
       {% endif %}
     </div>
   </div>
@@ -73,7 +73,7 @@
             <tr>
               <td colspan="4" class="text-center">
                 {% if scheduler_running %}
-                  No records found. The system will automatically count active vehicles daily at 5:00 AM.
+                  No records found. The system will automatically count active vehicles daily at 5:00 AM Manila Time.
                 {% else %}
                   No records found. <strong>Automatic counting is disabled.</strong> Please install APScheduler or use "Run Count Now" to manually count vehicles.
                 {% endif %}

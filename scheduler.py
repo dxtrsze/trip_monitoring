@@ -11,6 +11,7 @@ from datetime import datetime, time
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 import atexit
+from pytz import timezone
 
 # Add the parent directory to the path so we can import app
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -53,11 +54,12 @@ def count_daily_active_vehicles():
 def start_scheduler():
     """Start the background scheduler"""
     scheduler = BackgroundScheduler()
+    manila_tz = timezone('Asia/Manila')
 
-    # Schedule job to run every day at 5:00 AM
+    # Schedule job to run every day at 8:00 AM Manila time
     scheduler.add_job(
         func=count_daily_active_vehicles,
-        trigger=CronTrigger(hour=5, minute=0),
+        trigger=CronTrigger(hour=8, minute=0, timezone=manila_tz),
         id='daily_vehicle_count',
         name='Count daily active vehicles',
         replace_existing=True
@@ -65,7 +67,7 @@ def start_scheduler():
 
     # Start the scheduler
     scheduler.start()
-    print(f"[{datetime.now()}] Scheduler started. Daily vehicle count will run at 5:00 AM daily.")
+    print(f"[{datetime.now()}] Scheduler started. Daily vehicle count will run at 8:00 AM Manila time daily.")
 
     # Shut down the scheduler when exiting the app
     atexit.register(lambda: scheduler.shutdown())
