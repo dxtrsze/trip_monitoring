@@ -517,8 +517,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fetch scheduled trips data
     fetch(`/scheduled_trips_report?start_date=${startDate}&end_date=${endDate}`)
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(err => {
+            throw new Error(err.error || 'Failed to generate report');
+          });
+        }
+        return response.json();
+      })
       .then(data => {
+        // Check if data contains an error
+        if (data.error) {
+          throw new Error(data.error);
+        }
         displayScheduledTripsReport(data);
         exportBtn.style.display = 'inline-block';
         truckResults.style.display = 'none';
@@ -529,7 +540,7 @@ document.addEventListener('DOMContentLoaded', function() {
       })
       .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while generating the report');
+        alert('Error: ' + error.message);
       });
   });
 
@@ -547,15 +558,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fetch truck load utilization data
     fetch(`/truck_utilization?start_date=${startDate}&end_date=${endDate}`)
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(err => {
+            throw new Error(err.error || 'Failed to fetch truck utilization data');
+          });
+        }
+        return response.json();
+      })
       .then(data => {
+        if (data.error) {
+          throw new Error(data.error);
+        }
         displayTruckData(data);
         reportResults.style.display = 'none';
         fleetResults.style.display = 'none';
       })
       .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while fetching truck utilization data');
+        alert('Error: ' + error.message);
       });
   });
 
@@ -573,15 +594,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fetch truck fleet utilization data
     fetch(`/truck_fleet_utilization?start_date=${startDate}&end_date=${endDate}`)
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(err => {
+            throw new Error(err.error || 'Failed to fetch fleet utilization data');
+          });
+        }
+        return response.json();
+      })
       .then(data => {
+        if (data.error) {
+          throw new Error(data.error);
+        }
         displayFleetData(data);
         reportResults.style.display = 'none';
         truckResults.style.display = 'none';
       })
       .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while fetching truck fleet utilization data');
+        alert('Error: ' + error.message);
       });
   });
 
@@ -606,8 +637,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fetch ODO data
     fetch(url)
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(err => {
+            throw new Error(err.error || 'Failed to fetch ODO data');
+          });
+        }
+        return response.json();
+      })
       .then(data => {
+        if (data.error) {
+          throw new Error(data.error);
+        }
         displayFuelData(data);
         reportResults.style.display = 'none';
         truckResults.style.display = 'none';
@@ -615,7 +656,7 @@ document.addEventListener('DOMContentLoaded', function() {
       })
       .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while fetching ODO data');
+        alert('Error: ' + error.message);
       });
   });
 
@@ -633,8 +674,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fetch frequency rate data
     fetch(`/frequency_rate?start_date=${startDate}&end_date=${endDate}`)
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(err => {
+            throw new Error(err.error || 'Failed to fetch frequency rate data');
+          });
+        }
+        return response.json();
+      })
       .then(data => {
+        if (data.error) {
+          throw new Error(data.error);
+        }
         displayFrequencyData(data);
         reportResults.style.display = 'none';
         truckResults.style.display = 'none';
@@ -643,7 +694,7 @@ document.addEventListener('DOMContentLoaded', function() {
       })
       .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while fetching frequency rate data');
+        alert('Error: ' + error.message);
       });
   });
 
@@ -661,8 +712,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fetch DIFOT data
     fetch(`/difot_data?start_date=${startDate}&end_date=${endDate}`)
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(err => {
+            throw new Error(err.error || 'Failed to fetch DIFOT data');
+          });
+        }
+        return response.json();
+      })
       .then(data => {
+        if (data.error) {
+          throw new Error(data.error);
+        }
         displayDifotData(data);
         reportResults.style.display = 'none';
         truckResults.style.display = 'none';
@@ -672,7 +733,7 @@ document.addEventListener('DOMContentLoaded', function() {
       })
       .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while fetching DIFOT data');
+        alert('Error: ' + error.message);
       });
   });
 

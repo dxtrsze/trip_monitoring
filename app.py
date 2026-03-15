@@ -4,13 +4,15 @@ import io
 import random
 import string
 from dateutil import parser as date_parser
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 import pandas as pd
 from models import db, Vehicle, Manpower, Data, Schedule, Trip, TripDetail, Cluster, User, Odo, DailyVehicleCount, Backload
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload, subqueryload
 from functools import wraps
+from threading import Lock
 
 
 
@@ -26,6 +28,50 @@ if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
 
 db.init_app(app)
+
+# Simple in-memory cache for static reference data
+# This cache stores frequently accessed data that doesn't change often
+class SimpleCache:
+    def __init__(self):
+        self._cache = {}
+        self._timestamps = {}
+        self._lock = Lock()
+        self.default_ttl = 300  # 5 minutes default TTL
+
+    def get(self, key):
+        with self._lock:
+            if key in self._cache:
+                timestamp = self._timestamps.get(key)
+                if timestamp and datetime.now() - timestamp < timedelta(seconds=self.default_ttl):
+                    return self._cache[key]
+                else:
+                    # Cache expired
+                    del self._cache[key]
+                    del self._timestamps[key]
+            return None
+
+    def set(self, key, value, ttl=None):
+        with self._lock:
+            self._cache[key] = value
+            self._timestamps[key] = datetime.now()
+            if ttl:
+                # Store custom TTL (not used in get() but can be extended)
+                pass
+
+    def clear(self):
+        with self._lock:
+            self._cache.clear()
+            self._timestamps.clear()
+
+    def delete(self, key):
+        with self._lock:
+            if key in self._cache:
+                del self._cache[key]
+            if key in self._timestamps:
+                del self._timestamps[key]
+
+# Initialize cache
+cache = SimpleCache()
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -77,6 +123,80 @@ def login_required_user(f):
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
+
+# Cached data helper functions
+def get_cached_active_vehicles():
+    """Get cached list of active vehicles"""
+    cached_data = cache.get('active_vehicles')
+    if cached_data is not None:
+        return cached_data
+
+    vehicles = Vehicle.query.filter_by(status='Active').order_by(Vehicle.plate_number).all()
+    cache.set('active_vehicles', vehicles)
+    return vehicles
+
+def get_cached_all_vehicles():
+    """Get cached list of all vehicles"""
+    cached_data = cache.get('all_vehicles')
+    if cached_data is not None:
+        return cached_data
+
+    vehicles = Vehicle.query.order_by(Vehicle.plate_number).all()
+    cache.set('all_vehicles', vehicles)
+    return vehicles
+
+def get_cached_drivers():
+    """Get cached list of drivers"""
+    cached_data = cache.get('drivers')
+    if cached_data is not None:
+        return cached_data
+
+    drivers = Manpower.query.filter_by(role='Driver').order_by(Manpower.name).all()
+    cache.set('drivers', drivers)
+    return drivers
+
+def get_cached_assistants():
+    """Get cached list of assistants"""
+    cached_data = cache.get('assistants')
+    if cached_data is not None:
+        return cached_data
+
+    assistants = Manpower.query.filter_by(role='Assistant').order_by(Manpower.name).all()
+    cache.set('assistants', assistants)
+    return assistants
+
+def get_cached_clusters():
+    """Get cached list of clusters"""
+    cached_data = cache.get('clusters')
+    if cached_data is not None:
+        return cached_data
+
+    clusters = Cluster.query.all()
+    cache.set('clusters', clusters)
+    return clusters
+
+def get_cached_cluster_dict():
+    """Get cached cluster dictionary for lookup"""
+    cached_data = cache.get('cluster_dict')
+    if cached_data is not None:
+        return cached_data
+
+    clusters = Cluster.query.all()
+    cluster_dict = {}
+    for cluster in clusters:
+        if cluster.branch:
+            cluster_dict[cluster.branch.lower()] = cluster.area or ''
+    cache.set('cluster_dict', cluster_dict)
+    return cluster_dict
+
+def invalidate_reference_cache():
+    """Invalidate all reference data caches (call after modifying vehicles, manpower, or clusters)"""
+    cache.delete('active_vehicles')
+    cache.delete('all_vehicles')
+    cache.delete('drivers')
+    cache.delete('assistants')
+    cache.delete('clusters')
+    cache.delete('cluster_dict')
 
 # Home page
 @app.route('/')
@@ -131,12 +251,24 @@ def logout():
 @app.route('/data')
 @login_required
 def view_data():
-   # ✅ Only fetch records with status = 'Not Scheduled'
+   # ✅ Only fetch records with status = 'Not Scheduled' with pagination and search
     if current_user.position != 'admin':
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('view_schedule'))
-    not_scheduled_data = Data.query.filter_by(status='Not Scheduled').all()
-    return render_template('view_data.html', data=not_scheduled_data)
+
+    page = request.args.get('page', 1, type=int)
+    per_page = 50  # Show 50 records per page
+    search_term = request.args.get('search', '').strip()
+
+    # Build query
+    query = Data.query.filter_by(status='Not Scheduled')
+
+    # Apply search filter if provided
+    if search_term:
+        query = query.filter(Data.document_number.contains(search_term))
+
+    pagination = query.order_by(Data.due_date.desc().nulls_last(), Data.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    return render_template('view_data.html', data=pagination.items, pagination=pagination, search_term=search_term)
 
 @app.route('/data/scheduled')
 @login_required
@@ -596,6 +728,7 @@ def add_vehicle():
         vehicle = Vehicle(plate_number=plate_number, capacity=float(capacity))
         db.session.add(vehicle)
         db.session.commit()
+        invalidate_reference_cache()  # Invalidate vehicle cache
         flash('Vehicle added successfully!')
     except Exception as e:
         db.session.rollback()
@@ -610,6 +743,7 @@ def delete_vehicle(id):
     try:
         db.session.delete(vehicle)
         db.session.commit()
+        invalidate_reference_cache()  # Invalidate vehicle cache
         flash('Vehicle deleted successfully!')
     except Exception as e:
         db.session.rollback()
@@ -624,6 +758,7 @@ def deactivate_vehicle(id):
     try:
         vehicle.status = 'Inactive'
         db.session.commit()
+        invalidate_reference_cache()  # Invalidate vehicle cache
         flash('Vehicle deactivated successfully!')
     except Exception as e:
         db.session.rollback()
@@ -638,6 +773,7 @@ def activate_vehicle(id):
     try:
         vehicle.status = 'Active'
         db.session.commit()
+        invalidate_reference_cache()  # Invalidate vehicle cache
         flash('Vehicle activated successfully!')
     except Exception as e:
         db.session.rollback()
@@ -664,6 +800,7 @@ def edit_vehicle(id):
         vehicle.plate_number = plate_number
         vehicle.capacity = float(capacity)
         db.session.commit()
+        invalidate_reference_cache()  # Invalidate vehicle cache
         flash('Vehicle updated successfully!')
     except Exception as e:
         db.session.rollback()
@@ -709,6 +846,7 @@ def add_manpower():
 
         db.session.add(person)
         db.session.commit()
+        invalidate_reference_cache()  # Invalidate manpower cache
         flash('Manpower added successfully!')
     except Exception as e:
         db.session.rollback()
@@ -723,6 +861,7 @@ def delete_manpower(id):
     try:
         db.session.delete(person)
         db.session.commit()
+        invalidate_reference_cache()  # Invalidate manpower cache
         flash('Manpower deleted successfully!')
     except Exception as e:
         db.session.rollback()
@@ -819,6 +958,7 @@ def delete_cluster(id):
     try:
         db.session.delete(cluster)
         db.session.commit()
+        invalidate_reference_cache()  # Invalidate cluster cache
         flash('Cluster deleted successfully!')
     except Exception as e:
         db.session.rollback()
@@ -917,6 +1057,7 @@ def upload_clusters():
                     return redirect(request.url)
 
             db.session.commit()
+            invalidate_reference_cache()  # Invalidate cluster cache
             flash(f"Successfully uploaded {records_added} cluster(s)! All previous data was replaced.", 'success')
             return redirect(url_for('manage_clusters'))
 
@@ -966,8 +1107,12 @@ def manage_users():
     if current_user.position != 'admin':
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('view_schedule'))
-    users = User.query.all()
-    return render_template('manage_users.html', users=users)
+
+    page = request.args.get('page', 1, type=int)
+    per_page = 20  # Show 20 users per page
+
+    pagination = User.query.order_by(User.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    return render_template('manage_users.html', users=pagination.items, pagination=pagination)
 
 @app.route('/users/add', methods=['POST'])
 @login_required
@@ -1268,7 +1413,13 @@ def view_schedule():
 
     if current_user.position == 'admin':
         # Admins see all schedules (past, today, and future)
-        schedules = Schedule.query.order_by(Schedule.delivery_schedule.desc()).all()
+        # Use eager loading to prevent N+1 queries
+        schedules = Schedule.query.options(
+            subqueryload(Schedule.trips).joinedload(Trip.vehicle),
+            subqueryload(Schedule.trips).subqueryload(Trip.drivers),
+            subqueryload(Schedule.trips).subqueryload(Trip.assistants),
+            subqueryload(Schedule.trips).subqueryload(Trip.details)
+        ).order_by(Schedule.delivery_schedule.desc()).all()
 
     else:
         # Regular users only see schedules where they are assigned
@@ -1305,7 +1456,13 @@ def view_schedule():
 
             # Get all schedule IDs
             all_schedule_ids = list(set([trip.schedule_id for trip in todays_trips] + [trip.schedule_id for trip in prior_incomplete_trips]))
-            schedules = Schedule.query.filter(Schedule.id.in_(all_schedule_ids)).order_by(Schedule.delivery_schedule.desc()).all()
+            # Use eager loading to prevent N+1 queries
+            schedules = Schedule.query.options(
+                subqueryload(Schedule.trips).joinedload(Trip.vehicle),
+                subqueryload(Schedule.trips).subqueryload(Trip.drivers),
+                subqueryload(Schedule.trips).subqueryload(Trip.assistants),
+                subqueryload(Schedule.trips).subqueryload(Trip.details)
+            ).filter(Schedule.id.in_(all_schedule_ids)).order_by(Schedule.delivery_schedule.desc()).all()
         else:
             # User has no associated manpower entry - show no schedules
             schedules = []
@@ -1478,10 +1635,10 @@ def add_schedule():
             flash(f"Error: {str(e)}", "error")
             return redirect(request.url)
 
-    # GET: Load resources for form
-    vehicles = Vehicle.query.filter_by(status='Active').order_by(Vehicle.plate_number).all()
-    drivers = Manpower.query.filter_by(role='Driver').order_by(Manpower.name).all()
-    assistants = Manpower.query.filter_by(role='Assistant').order_by(Manpower.name).all()
+    # GET: Load resources for form (use cached data)
+    vehicles = get_cached_active_vehicles()
+    drivers = get_cached_drivers()
+    assistants = get_cached_assistants()
     return render_template('add_schedule.html',
                          vehicles=vehicles,
                          drivers=drivers,
@@ -1534,12 +1691,8 @@ def api_not_scheduled():
         func.group_concat(subq.c.id).label('data_ids')  # Collect all IDs for this doc
     ).group_by(subq.c.document_number).all()
 
-    # Fetch all clusters for lookup (create a dictionary for fast lookup)
-    clusters = Cluster.query.all()
-    cluster_dict = {}
-    for cluster in clusters:
-        if cluster.branch:
-            cluster_dict[cluster.branch.lower()] = cluster.area or ''
+    # Get cached cluster dictionary for fast lookup
+    cluster_dict = get_cached_cluster_dict()
 
     documents = []
     for row in results:
@@ -2194,11 +2347,15 @@ def odo_logs():
         except ValueError:
             pass
 
-    # Order by datetime descending (newest first)
-    odo_logs = query.order_by(Odo.datetime.desc()).all()
+    # Order by datetime descending (newest first) and paginate
+    page = request.args.get('page', 1, type=int)
+    per_page = 50  # Show 50 odometer logs per page
 
-    # Get all vehicles for the filter dropdown
-    vehicles = Vehicle.query.all()
+    pagination = query.order_by(Odo.datetime.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    odo_logs = pagination.items
+
+    # Get all vehicles for the filter dropdown (use cached data)
+    vehicles = get_cached_all_vehicles()
 
     return render_template('odo_logs.html',
                          odo_logs=odo_logs,
@@ -2206,7 +2363,8 @@ def odo_logs():
                          vehicle_filter=vehicle_filter,
                          status_filter=status_filter,
                          start_date=start_date,
-                         end_date=end_date)
+                         end_date=end_date,
+                         pagination=pagination)
 
 
 # Reports page route
@@ -2237,8 +2395,13 @@ def scheduled_trips_report():
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() + timedelta(days=1)
 
-        # Query schedules within date range
-        schedules = Schedule.query.filter(
+        # Query schedules within date range with eager loading to prevent N+1 queries
+        schedules = Schedule.query.options(
+            subqueryload(Schedule.trips).joinedload(Trip.vehicle),
+            subqueryload(Schedule.trips).subqueryload(Trip.drivers),
+            subqueryload(Schedule.trips).subqueryload(Trip.assistants),
+            subqueryload(Schedule.trips).subqueryload(Trip.details)
+        ).filter(
             Schedule.delivery_schedule >= start_date,
             Schedule.delivery_schedule < end_date
         ).order_by(Schedule.delivery_schedule).all()
@@ -2298,8 +2461,13 @@ def export_scheduled_trips_report():
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() + timedelta(days=1)
 
-        # Query schedules within date range
-        schedules = Schedule.query.filter(
+        # Query schedules within date range with eager loading to prevent N+1 queries
+        schedules = Schedule.query.options(
+            subqueryload(Schedule.trips).joinedload(Trip.vehicle),
+            subqueryload(Schedule.trips).subqueryload(Trip.drivers),
+            subqueryload(Schedule.trips).subqueryload(Trip.assistants),
+            subqueryload(Schedule.trips).subqueryload(Trip.details)
+        ).filter(
             Schedule.delivery_schedule >= start_date,
             Schedule.delivery_schedule < end_date
         ).order_by(Schedule.delivery_schedule).all()
@@ -2389,8 +2557,13 @@ def generate_report():
         return jsonify({'success': False, 'message': f'Error generating report: {str(e)}'})
 
 def generate_scheduled_trips_report(start_date, end_date):
-    # Query all scheduled trips within the date range
-    schedules = Schedule.query.filter(
+    # Query all scheduled trips within the date range with eager loading
+    schedules = Schedule.query.options(
+        subqueryload(Schedule.trips).joinedload(Trip.vehicle),
+        subqueryload(Schedule.trips).subqueryload(Trip.drivers),
+        subqueryload(Schedule.trips).subqueryload(Trip.assistants),
+        subqueryload(Schedule.trips).subqueryload(Trip.details)
+    ).filter(
         Schedule.delivery_schedule >= start_date,
         Schedule.delivery_schedule <= end_date
     ).all()
@@ -2404,8 +2577,8 @@ def generate_scheduled_trips_report(start_date, end_date):
     for schedule in schedules:
         for trip in schedule.trips:
             for detail in trip.details:
-                driver_name = trip.driver.name if trip.driver else 'N/A'
-                assistant_name = trip.assistant.name if trip.assistant else 'N/A'
+                driver_name = ', '.join([d.name for d in trip.drivers]) if trip.drivers else 'N/A'
+                assistant_name = ', '.join([a.name for a in trip.assistants]) if trip.assistants else 'N/A'
                 vehicle_plate = trip.vehicle.plate_number if trip.vehicle else 'N/A'
 
                 rows.append([
@@ -3077,8 +3250,10 @@ def frequency_rate():
         from datetime import timedelta
         end_date = end_date + timedelta(days=1)
 
-        # Query schedules within date range
-        schedules = Schedule.query.filter(
+        # Query schedules within date range with eager loading
+        schedules = Schedule.query.options(
+            subqueryload(Schedule.trips).subqueryload(Trip.details)
+        ).filter(
             Schedule.delivery_schedule >= start_date,
             Schedule.delivery_schedule < end_date
         ).all()
@@ -3148,8 +3323,10 @@ def export_frequency_rate():
         from datetime import timedelta
         end_date = end_date + timedelta(days=1)
 
-        # Query schedules within date range
-        schedules = Schedule.query.filter(
+        # Query schedules within date range with eager loading
+        schedules = Schedule.query.options(
+            subqueryload(Schedule.trips).subqueryload(Trip.details)
+        ).filter(
             Schedule.delivery_schedule >= start_date,
             Schedule.delivery_schedule < end_date
         ).all()
@@ -3235,8 +3412,10 @@ def difot_data():
         from datetime import timedelta
         end_date = end_date + timedelta(days=1)
 
-        # Query schedules within date range with trip details
-        schedules = Schedule.query.filter(
+        # Query schedules within date range with eager loading
+        schedules = Schedule.query.options(
+            subqueryload(Schedule.trips).subqueryload(Trip.details)
+        ).filter(
             Schedule.delivery_schedule >= start_date,
             Schedule.delivery_schedule < end_date
         ).all()
@@ -3297,8 +3476,10 @@ def export_difot():
         from datetime import timedelta
         end_date = end_date + timedelta(days=1)
 
-        # Query schedules within date range with trip details
-        schedules = Schedule.query.filter(
+        # Query schedules within date range with eager loading
+        schedules = Schedule.query.options(
+            subqueryload(Schedule.trips).subqueryload(Trip.details)
+        ).filter(
             Schedule.delivery_schedule >= start_date,
             Schedule.delivery_schedule < end_date
         ).all()
