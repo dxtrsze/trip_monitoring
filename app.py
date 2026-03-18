@@ -317,28 +317,6 @@ def download_csv_template():
 
     # Write one sample row for guidance (based on your data)
     writer.writerow([
-        "ITR",
-        "2025-10-02",
-        "345709",
-        "50QUHW01",
-        "5",
-        "5.00",
-        "0.00",
-        "FWH14P1F",
-        "ALS005",
-        "",
-        "",
-        "ALSONS MASBATE",
-        "",
-        "C",
-        "2025-10-04",
-        "rexconde",
-        "916253958",
-        "202509-0020594",
-        "0.09",
-        "",
-        "",
-        ""
     ])
 
     template.seek(0)
@@ -4649,14 +4627,11 @@ def download_lcl_template():
     writer.writerow([
         'SAP Upload Date', 'ISMS Upload Date', 'Delivery Date', 'Doc Type',
         'DR Number', 'Customer Name', 'Qty', 'From Whse', 'To Whse',
-        'Model', 'Serial Number', 'ITR SO', 'DR IT', 'CBM'
+        'Model', 'Serial Number', 'ITR SO', 'DR IT', 'CBM', "Email"
     ])
 
     # Write sample row
     writer.writerow([
-        '2024-01-15', '2024-01-16', '2024-01-17', 'DR',
-        'DR001', 'Customer A', '10', 'WH001', 'WH002',
-        'Model X', 'SN12345', 'ITR001', 'IT', '0.5'
     ])
 
     # Return as downloadable CSV file
