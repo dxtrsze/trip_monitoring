@@ -323,7 +323,8 @@
               <tr>
                 <th>Plate Number</th>
                 <th>Total KM Traveled</th>
-                <th>Total Litters</th>
+                <th>KM/Liter</th>
+                <th>Total Liters</th>
                 <th>Total Amount</th>
                 <th>Average Price/Liter</th>
               </tr>
@@ -905,7 +906,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (data.length === 0) {
       fuelTableBody.innerHTML = '<tr><td colspan="8" class="text-center">No ODO records found for the selected criteria</td></tr>';
-      fuelSummaryBody.innerHTML = '<tr><td colspan="5" class="text-center">No summary data available</td></tr>';
+      fuelSummaryBody.innerHTML = '<tr><td colspan="6" class="text-center">No summary data available</td></tr>';
     } else {
       // Calculate summary by plate number
       const summary = {};
@@ -953,9 +954,14 @@ document.addEventListener('DOMContentLoaded', function() {
           ? (summaryRow.total_amount / summaryRow.total_litters).toFixed(2)
           : 'N/A';
 
+        const kmPerLiter = (summaryRow.total_litters > 0 && totalKm !== 'N/A')
+          ? (parseFloat(totalKm) / summaryRow.total_litters).toFixed(2)
+          : 'N/A';
+
         tr.innerHTML = `
           <td><strong>${summaryRow.plate_number}</strong></td>
           <td><span class="badge bg-primary fs-6">${totalKm}</span></td>
+          <td><span class="badge bg-success fs-6">${kmPerLiter !== 'N/A' ? kmPerLiter : 'N/A'}</span></td>
           <td>${summaryRow.total_litters.toFixed(2)}</td>
           <td>₱${summaryRow.total_amount.toFixed(2)}</td>
           <td>${avgPricePerLiter !== 'N/A' ? '₱' + avgPricePerLiter : 'N/A'}</td>
