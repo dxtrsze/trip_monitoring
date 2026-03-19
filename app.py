@@ -284,8 +284,36 @@ def view_scheduled_data():
     if current_user.position != 'admin':
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('view_schedule'))
-    # This page will use JavaScript to fetch scheduled data via API
-    return render_template('view_scheduled_data.html')
+
+    # Get search and filter parameters
+    search_term = request.args.get('search', '').strip()
+    search_type = request.args.get('type', 'document')
+    page = request.args.get('page', 1, type=int)
+    per_page = 50  # Show 50 records per page
+
+    # Build query
+    query = Data.query.filter(Data.status == 'Scheduled')
+
+    # Apply filters if search term is provided
+    if search_term:
+        if search_type == 'document':
+            query = query.filter(Data.document_number.contains(search_term))
+        elif search_type == 'class':
+            query = query.filter(
+                db.or_(
+                    Data.branch_name.contains(search_term),
+                    Data.branch_name_v2.contains(search_term)
+                )
+            )
+
+    # Order by id descending (newest first) and paginate
+    pagination = query.order_by(Data.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
+
+    return render_template('view_scheduled_data.html',
+                         data=pagination.items,
+                         pagination=pagination,
+                         search_term=search_term,
+                         search_type=search_type)
  
 @app.route('/data/download_template')
 def download_csv_template():
@@ -1165,11 +1193,23 @@ def manage_users():
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('view_schedule'))
 
+    search = request.args.get('search', '')
     page = request.args.get('page', 1, type=int)
     per_page = 20  # Show 20 users per page
 
-    pagination = User.query.order_by(User.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
-    return render_template('manage_users.html', users=pagination.items, pagination=pagination)
+    # Build query with search filter
+    query = User.query
+    if search:
+        search_pattern = f'%{search}%'
+        query = query.filter(
+            db.or_(
+                User.name.ilike(search_pattern),
+                User.email.ilike(search_pattern)
+            )
+        )
+
+    pagination = query.order_by(User.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    return render_template('manage_users.html', users=pagination.items, pagination=pagination, search=search)
 
 @app.route('/users/add', methods=['POST'])
 @login_required
