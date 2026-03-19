@@ -20,6 +20,7 @@
                         <th>Plate Number</th>
                         <th>Capacity</th>
                         <th>Department</th>
+                        <th>Type</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -33,6 +34,11 @@
                         <td>
                             <span class="badge bg-info">
                                 {{ vehicle.dept or 'Not Set' }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'primary' if vehicle.type == 'in-house' else 'secondary' }}">
+                                {{ vehicle.type|title if vehicle.type else 'Not Set' }}
                             </span>
                         </td>
                         <td>
@@ -99,6 +105,14 @@
                             <option value="Service">Service</option>
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label for="type" class="form-label">Type</label>
+                        <select class="form-select" id="type" name="type" required>
+                            <option value="">Select type</option>
+                            <option value="in-house">In-House</option>
+                            <option value="3pl">3PL</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -135,6 +149,14 @@
                             <option value="Logistics" {% if vehicle.dept == 'Logistics' %}selected{% endif %}>Logistics</option>
                             <option value="Executive" {% if vehicle.dept == 'Executive' %}selected{% endif %}>Executive</option>
                             <option value="Service" {% if vehicle.dept == 'Service' %}selected{% endif %}>Service</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_type_{{ vehicle.id }}" class="form-label">Type</label>
+                        <select class="form-select" id="edit_type_{{ vehicle.id }}" name="type" required>
+                            <option value="">Select type</option>
+                            <option value="in-house" {% if vehicle.type == 'in-house' %}selected{% endif %}>In-House</option>
+                            <option value="3pl" {% if vehicle.type == '3pl' %}selected{% endif %}>3PL</option>
                         </select>
                     </div>
                 </div>

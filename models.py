@@ -11,6 +11,7 @@ class Vehicle(db.Model):
     status = db.Column(db.String(50), nullable=False, default='Active')  # 'Active' or 'Inactive'
     capacity = db.Column(db.Float, nullable=True)  # Vehicle capacity in CBM
     dept = db.Column(db.String(50), nullable=True)  # 'Logistics', 'Executive', 'Service'
+    type = db.Column(db.String(50), nullable=True)  # 'in-house' or '3pl'
 
     def __repr__(self):
         return f'<Vehicle {self.plate_number}>'

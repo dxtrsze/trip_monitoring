@@ -4,6 +4,7 @@ import io
 import json
 import random
 import string
+import re
 from collections import defaultdict
 from dateutil import parser as date_parser
 from datetime import datetime, timedelta
@@ -790,6 +791,7 @@ def add_vehicle():
     plate_number = request.form.get('plate_number')
     capacity = request.form.get('capacity')
     dept = request.form.get('dept')
+    vehicle_type = request.form.get('type')
 
     if not plate_number:
         flash('Plate number is required')
@@ -803,8 +805,12 @@ def add_vehicle():
         flash('Department is required')
         return redirect(url_for('manage_vehicles'))
 
+    if not vehicle_type:
+        flash('Type is required')
+        return redirect(url_for('manage_vehicles'))
+
     try:
-        vehicle = Vehicle(plate_number=plate_number, capacity=float(capacity), dept=dept)
+        vehicle = Vehicle(plate_number=plate_number, capacity=float(capacity), dept=dept, type=vehicle_type)
         db.session.add(vehicle)
         db.session.commit()
         invalidate_reference_cache()  # Invalidate vehicle cache
@@ -867,6 +873,7 @@ def edit_vehicle(id):
     plate_number = request.form.get('plate_number')
     capacity = request.form.get('capacity')
     dept = request.form.get('dept')
+    vehicle_type = request.form.get('type')
 
     if not plate_number:
         flash('Plate number is required')
@@ -880,10 +887,15 @@ def edit_vehicle(id):
         flash('Department is required')
         return redirect(url_for('manage_vehicles'))
 
+    if not vehicle_type:
+        flash('Type is required')
+        return redirect(url_for('manage_vehicles'))
+
     try:
         vehicle.plate_number = plate_number
         vehicle.capacity = float(capacity)
         vehicle.dept = dept
+        vehicle.type = vehicle_type
         db.session.commit()
         invalidate_reference_cache()  # Invalidate vehicle cache
         flash('Vehicle updated successfully!')
@@ -4668,6 +4680,13 @@ def upload_lcl():
                     cbm = float(row["CBM"]) if row["CBM"] else 0.0
                     email = clean(row["Email"])
 
+                    # Validate email format if provided
+                    if email:
+                        # Basic email validation
+                        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+                        if not re.match(email_pattern, email):
+                            raise ValueError(f"Invalid email format: '{email}'. Email must be in valid format (e.g., user@example.com)")
+
                     # Store validated record
                     validated_records.append({
                         'row_num': row_num,
@@ -4696,6 +4715,36 @@ def upload_lcl():
                     flash(f"Row {row_num}: Unexpected error – {str(e)}", 'error')
                     db.session.rollback()
                     return redirect(request.url)
+
+            # Step 2.5: Check for duplicates within the CSV file itself
+            csv_internal_duplicates = {}
+            csv_unique_records = []
+            csv_internal_skipped = 0
+            csv_dup_warnings = []
+
+            for record in validated_records:
+                key = (record['sap_upload_date'], record['customer_name'], record['serial_number'])
+                if key in csv_internal_duplicates:
+                    # Track the duplicate
+                    csv_internal_duplicates[key].append(record['row_num'])
+                    csv_internal_skipped += 1
+                else:
+                    csv_internal_duplicates[key] = [record['row_num']]
+                    csv_unique_records.append(record)
+
+            # Build error messages for internal duplicates
+            for key, row_nums in csv_internal_duplicates.items():
+                if len(row_nums) > 1:
+                    sap_date = key[0].strftime('%Y-%m-%d') if key[0] else 'N/A'
+                    cust_name = key[1] if key[1] else 'N/A'
+                    serial = key[2] if key[2] else 'N/A'
+                    rows_str = ", ".join(map(str, row_nums))
+                    csv_dup_warnings.append(
+                        f"Duplicate record in CSV: SAP Date '{sap_date}', Customer '{cust_name}', Serial '{serial}' found in rows {rows_str}. Keeping first occurrence, skipping duplicates."
+                    )
+
+            # Update validated_records to only include unique records from CSV
+            validated_records = csv_unique_records
 
             # Batch duplicate check using unique constraint (sap_upload_date, customer_name, serial_number)
             csv_keys = [(r['sap_upload_date'], r['customer_name'], r['serial_number']) for r in validated_records]
@@ -4822,9 +4871,18 @@ def upload_lcl():
                     # ✅ Single commit for both details and summaries (atomic transaction)
                     db.session.commit()
 
+                    # Display CSV internal duplicate warnings
+                    if csv_dup_warnings:
+                        for warning in csv_dup_warnings:
+                            flash(warning, 'warning')
+
                     message = f"Successfully uploaded {records_added} LCL detail record(s)!"
-                    if records_skipped > 0:
-                        message += f" Skipped {records_skipped} duplicate record(s)."
+                    total_skipped = records_skipped + csv_internal_skipped
+                    if total_skipped > 0:
+                        if csv_internal_skipped > 0:
+                            message += f" Skipped {total_skipped} duplicate record(s) ({csv_internal_skipped} within CSV, {records_skipped} in database)."
+                        else:
+                            message += f" Skipped {total_skipped} duplicate record(s)."
                     flash(message, 'success')
                     return redirect(url_for('view_lcl_details'))
 
@@ -4834,7 +4892,17 @@ def upload_lcl():
                     flash(f"Failed to process file: {str(e)}", 'error')
                     return redirect(request.url)
             else:
-                flash("No new records to upload (all duplicates).", 'info')
+                # Display CSV internal duplicate warnings even if no records inserted
+                if csv_dup_warnings:
+                    for warning in csv_dup_warnings:
+                        flash(warning, 'warning')
+
+                message = "No new records to upload"
+                if csv_internal_skipped > 0:
+                    message += f" (skipped {csv_internal_skipped} duplicate(s) within CSV)."
+                else:
+                    message += " (all duplicates)."
+                flash(message, 'info')
                 return redirect(url_for('view_lcl_details'))
 
         except Exception as e:
@@ -4939,7 +5007,7 @@ def download_lcl_template():
     writer.writerow([
         'SAP Upload Date', 'ISMS Upload Date', 'Delivery Date', 'Doc Type',
         'DR Number', 'Customer Name', 'Qty', 'From Whse', 'To Whse',
-        'Model', 'Serial Number', 'ITR SO', 'DR IT', 'CBM', "Email"
+        'Model', 'Serial Number', 'ITR SO', 'DR IT', '3PL', 'WAYBILL', 'CONTAINER NO.', 'ETA', 'CBM', "Email"
     ])
 
     # Write sample row

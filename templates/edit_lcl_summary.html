@@ -188,8 +188,8 @@
                     <input type="text" class="form-control" id="received_by" name="received_by" value="{{ summary.received_by or '' }}">
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label for="team_lead" class="form-label">Team Lead</label>
-                    <input type="text" class="form-control" id="team_lead" name="team_lead" value="{{ summary.team_lead or '' }}">
+                    <label for="team_lead" class="form-label">Team Lead (Email) <span class="text-danger">*</span></label>
+                    <input type="email" class="form-control" id="team_lead" name="team_lead" value="{{ summary.team_lead or '' }}" required>
                 </div>
             </div>
         </div>
