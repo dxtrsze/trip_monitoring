@@ -1830,11 +1830,12 @@ def api_available_for_edit():
     """Get available shipments for editing a trip (Not Scheduled, not assigned to any trip in the schedule)"""
     delivery_date_str = request.args.get('delivery_date')
     trip_id = request.args.get('trip_id')
+    due_date_from_str = request.args.get('due_date_from')
+    due_date_to_str = request.args.get('due_date_to')
 
-    if not delivery_date_str or not trip_id:
+    if not trip_id:
         return jsonify([])
 
-    delivery_date = datetime.strptime(delivery_date_str, '%Y-%m-%d').date()
     trip = db.session.get(Trip, trip_id)
     if not trip:
         return jsonify([])
@@ -1848,11 +1849,23 @@ def api_available_for_edit():
         if detail.data_ids:
             assigned_data_ids.update(detail.data_ids.split(','))
 
-    # Get all "Not Scheduled" data with due_date == delivery date
-    subq = Data.query.filter(
-        Data.status == 'Not Scheduled',
-        Data.due_date == delivery_date
-    ).subquery()
+    # Build the date filter query
+    date_filters = [Data.status == 'Not Scheduled']
+
+    # If date range parameters are provided, use them; otherwise use delivery_date for backward compatibility
+    if due_date_from_str and due_date_to_str:
+        # Use date range
+        due_date_from = datetime.strptime(due_date_from_str, '%Y-%m-%d').date()
+        due_date_to = datetime.strptime(due_date_to_str, '%Y-%m-%d').date()
+        date_filters.append(Data.due_date >= due_date_from)
+        date_filters.append(Data.due_date <= due_date_to)
+    elif delivery_date_str:
+        # Use exact delivery date (backward compatibility)
+        delivery_date = datetime.strptime(delivery_date_str, '%Y-%m-%d').date()
+        date_filters.append(Data.due_date == delivery_date)
+
+    # Get all "Not Scheduled" data with date filter
+    subq = Data.query.filter(*date_filters).subquery()
 
     # Group by document_number and aggregate
     results = db.session.query(
@@ -1981,6 +1994,142 @@ def add_shipments_to_trip():
 
         db.session.commit()
         return jsonify({'success': True, 'message': f'Successfully added {len(data_ids)} shipment(s) to trip'})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/get_trip_shipments/<int:trip_id>')
+@login_required
+def get_trip_shipments(trip_id):
+    """Get all shipments currently assigned to a trip"""
+    if current_user.position != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+
+    try:
+        trip = db.session.get(Trip, trip_id)
+        if not trip:
+            return jsonify({'error': 'Trip not found'}), 404
+
+        shipments = []
+        for detail in trip.details:
+            # Parse data_ids to get individual data records
+            if detail.data_ids:
+                data_id_list = detail.data_ids.split(',')
+                for data_id in data_id_list:
+                    data_record = db.session.get(Data, data_id)
+                    if data_record:
+                        shipments.append({
+                            'data_id': data_id,
+                            'document_number': data_record.document_number,
+                            'branch_name_v2': detail.branch_name_v2,
+                            'total_cbm': detail.total_cbm,
+                            'due_date': data_record.due_date.strftime('%Y-%m-%d') if data_record.due_date else None,
+                            'delivery_order': detail.delivery_order
+                        })
+
+        return jsonify({'shipments': shipments})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/remove_shipment_from_trip', methods=['POST'])
+@login_required
+def remove_shipment_from_trip():
+    """Remove a shipment from a trip"""
+    if current_user.position != 'admin':
+        return jsonify({'success': False, 'message': 'Access denied. Admin privileges required.'}), 403
+
+    try:
+        data = request.get_json()
+        trip_id = data.get('trip_id')
+        data_id = data.get('data_id')
+
+        if not trip_id or not data_id:
+            return jsonify({'success': False, 'message': 'Missing required parameters'}), 400
+
+        trip = db.session.get(Trip, trip_id)
+        if not trip:
+            return jsonify({'success': False, 'message': 'Trip not found'}), 404
+
+        data_record = db.session.get(Data, data_id)
+        if not data_record:
+            return jsonify({'success': False, 'message': 'Data record not found'}), 404
+
+        # Find the TripDetail that contains this data_id
+        trip_detail = None
+        for detail in trip.details:
+            if detail.data_ids and data_id in detail.data_ids.split(','):
+                trip_detail = detail
+                break
+
+        if not trip_detail:
+            return jsonify({'success': False, 'message': 'Shipment not found in this trip'}), 404
+
+        # Remove the data_id from the TripDetail
+        data_id_list = trip_detail.data_ids.split(',')
+        data_id_list.remove(data_id)
+
+        # Calculate the CBM of the removed shipment
+        removed_cbm = data_record.cbm * data_record.ordered_qty if data_record.cbm and data_record.ordered_qty else 0.0
+
+        if len(data_id_list) == 0:
+            # If this was the only data_id, remove the entire TripDetail
+            db.session.delete(trip_detail)
+        else:
+            # Update the TripDetail with remaining data_ids
+            trip_detail.data_ids = ','.join(data_id_list)
+            # Recalculate totals
+            remaining_data = db.session.query(Data).filter(Data.id.in_(data_id_list)).all()
+            trip_detail.total_cbm = sum(d.cbm * d.ordered_qty for d in remaining_data if d.cbm and d.ordered_qty)
+            trip_detail.total_ordered_qty = sum(d.ordered_qty for d in remaining_data if d.ordered_qty)
+            trip_detail.total_delivered_qty = trip_detail.total_ordered_qty
+
+        # Update trip total CBM
+        trip.total_cbm = sum(d.total_cbm for d in trip.details if d.total_cbm)
+
+        # Update schedule actual total CBM
+        if trip.schedule:
+            trip.schedule.actual = sum(t.total_cbm for t in trip.schedule.trips if t.total_cbm)
+
+        # Mark the data record as Not Scheduled
+        data_record.status = "Not Scheduled"
+        data_record.delivered_qty = 0
+
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'Successfully removed shipment {data_record.document_number} from trip'})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/toggle_trip_complete', methods=['POST'])
+@login_required
+def toggle_trip_complete():
+    """Toggle trip completion status"""
+    if current_user.position != 'admin':
+        return jsonify({'success': False, 'message': 'Access denied. Admin privileges required.'}), 403
+
+    try:
+        data = request.get_json()
+        trip_id = data.get('trip_id')
+
+        if not trip_id:
+            return jsonify({'success': False, 'message': 'Missing trip_id'}), 400
+
+        trip = db.session.get(Trip, trip_id)
+        if not trip:
+            return jsonify({'success': False, 'message': 'Trip not found'}), 404
+
+        # Toggle the completed status
+        trip.completed = not trip.completed
+        db.session.commit()
+
+        status = "completed" if trip.completed else "marked as incomplete"
+        return jsonify({'success': True, 'message': f'Trip #{trip.trip_number} {status}', 'completed': trip.completed})
 
     except Exception as e:
         db.session.rollback()

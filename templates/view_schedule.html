@@ -135,10 +135,22 @@
             {% else %}
             <span class="badge bg-secondary">No capacity set</span>
             {% endif %}
+            {% if trip.completed %}
+            <span class="badge bg-info"><i class="bi bi-check-circle"></i> Completed</span>
+            {% endif %}
           </h6>
           {% if current_user.position == 'admin' %}
           <div class="btn-group btn-group-sm" role="group">
-            <button type="button" class="btn btn-sm btn-warning btn-edit-trip" data-trip-id="{{ trip.id }}" data-schedule-id="{{ schedule.id }}" data-delivery-date="{{ schedule.delivery_schedule.strftime('%Y-%m-%d') }}">
+            {% if trip.completed %}
+            <button type="button" class="btn btn-sm btn-success btn-complete-trip" data-trip-id="{{ trip.id }}" data-completed="true">
+              <i class="bi bi-check-circle"></i> Completed
+            </button>
+            {% else %}
+            <button type="button" class="btn btn-sm btn-outline-success btn-complete-trip" data-trip-id="{{ trip.id }}" data-completed="false">
+              <i class="bi bi-circle"></i> Mark Complete
+            </button>
+            {% endif %}
+            <button type="button" class="btn btn-sm btn-warning btn-edit-trip" data-trip-id="{{ trip.id }}" data-schedule-id="{{ schedule.id }}" data-delivery-date="{{ schedule.delivery_schedule.strftime('%Y-%m-%d') }}" {% if trip.completed %}style="display: none;"{% endif %}>
               Edit Trip
             </button>
             <button type="button" class="btn btn-sm btn-primary btn-edit-vehicle" data-trip-id="{{ trip.id }}" data-current-vehicle="{{ trip.vehicle.id }}">
@@ -363,16 +375,39 @@
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="editTripModalLabel">Edit Trip - Add Shipments</h5>
+        <h5 class="modal-title" id="editTripModalLabel">Edit Trip - Add or Remove Shipments</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
+        <!-- Current Shipments in Trip (with remove functionality) -->
+        <div class="mb-3">
+          <h6 class="text-primary"><i class="bi bi-truck"></i> Current Shipments in Trip</h6>
+          <div id="currentTripShipments" style="max-height: 250px; overflow-y: auto;">
+            <p class="text-muted small">Loading current shipments...</p>
+          </div>
+        </div>
+
+        <hr>
+
+        <!-- Filters for Available Shipments -->
         <div class="mb-3">
           <label for="editAreaFilter" class="form-label">Filter by Area</label>
           <select class="form-select" id="editAreaFilter">
             <option value="">All Areas</option>
           </select>
         </div>
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label for="editDueDateFrom" class="form-label">Due Date From</label>
+            <input type="date" class="form-control" id="editDueDateFrom">
+          </div>
+          <div class="col-md-6">
+            <label for="editDueDateTo" class="form-label">Due Date To</label>
+            <input type="date" class="form-control" id="editDueDateTo">
+          </div>
+        </div>
+
+        <!-- Available Shipments to Add -->
         <div class="card">
           <div class="card-header">Available Shipments (<span id="editShipmentCount">0</span> <span id="editTotalCountDisplay"></span>)</div>
           <div class="card-body" style="max-height: 400px; overflow-y: auto;">
@@ -381,7 +416,7 @@
         </div>
         <div class="mt-3">
           <div class="border rounded p-3">
-            <h6>Selected Shipments</h6>
+            <h6>Selected Shipments to Add</h6>
             <div id="editSelectedShipments" style="max-height: 200px; overflow-y: auto;">
               <p class="text-muted mb-0">No shipments selected</p>
             </div>
@@ -990,6 +1025,46 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // Event delegation for Complete Trip buttons
+  document.querySelectorAll('.btn-complete-trip').forEach(button => {
+    button.addEventListener('click', function() {
+      const tripId = this.getAttribute('data-trip-id');
+      const currentlyCompleted = this.getAttribute('data-completed') === 'true';
+
+      // Confirm action
+      if (!currentlyCompleted) {
+        if (!confirm('Mark this trip as complete? This will hide the Edit Trip button.')) {
+          return;
+        }
+      }
+
+      // Toggle trip completion
+      fetch('/toggle_trip_complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          trip_id: tripId
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message);
+          // Reload page to show updated state
+          location.reload();
+        } else {
+          alert('Error: ' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while toggling trip completion');
+      });
+    });
+  });
+
   // Event delegation for Edit Vehicle buttons
   document.querySelectorAll('.btn-edit-vehicle').forEach(button => {
     button.addEventListener('click', function() {
@@ -1241,6 +1316,7 @@ let editDeliveryDate = null;
 let editShipments = [];
 let editAllShipments = [];
 let editSelectedShipments = [];
+let editTripModal = null;
 
 // Load areas when page loads for edit modal
 document.addEventListener('DOMContentLoaded', function() {
@@ -1254,14 +1330,28 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Filter shipments when area changes in edit modal
+  // Filter shipments when area changes in edit modal (client-side filter)
   document.getElementById('editAreaFilter').addEventListener('change', function() {
     filterEditShipments();
+  });
+
+  // Reload shipments when date range changes (server-side filter)
+  document.getElementById('editDueDateFrom').addEventListener('change', function() {
+    loadAvailableShipments();
+  });
+  document.getElementById('editDueDateTo').addEventListener('change', function() {
+    loadAvailableShipments();
   });
 
   // Confirm add shipments button
   document.getElementById('confirmAddShipments').addEventListener('click', function() {
     addSelectedShipmentsToTrip();
+  });
+
+  // Clean up Edit Trip Modal when it's closed
+  const editTripModalEl = document.getElementById('editTripModal');
+  editTripModalEl.addEventListener('hidden.bs.modal', function () {
+    editTripModal = null;
   });
 });
 
@@ -1270,6 +1360,25 @@ function openEditTripModal() {
   editSelectedShipments = [];
   editAllShipments = [];
   editShipments = [];
+
+  // Reset date filters to match delivery date initially
+  document.getElementById('editDueDateFrom').value = editDeliveryDate;
+  document.getElementById('editDueDateTo').value = editDeliveryDate;
+
+  // Load current trip shipments first
+  fetch(`/get_trip_shipments/${editTripId}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      renderCurrentTripShipments(data.shipments);
+    })
+    .catch(error => {
+      console.error('Error loading current trip shipments:', error);
+      document.getElementById('currentTripShipments').innerHTML =
+        '<p class="text-danger small">Error loading current shipments</p>';
+    });
 
   // Load areas for the filter
   fetch('/api/areas')
@@ -1286,16 +1395,34 @@ function openEditTripModal() {
     });
 
   // Load available shipments for the delivery date
-  fetch(`/api/available_for_edit?delivery_date=${editDeliveryDate}&trip_id=${editTripId}`)
+  loadAvailableShipments();
+
+  // Initialize or reuse modal instance
+  if (!editTripModal) {
+    editTripModal = new bootstrap.Modal(document.getElementById('editTripModal'));
+  }
+  editTripModal.show();
+}
+
+function loadAvailableShipments() {
+  const dateFrom = document.getElementById('editDueDateFrom').value;
+  const dateTo = document.getElementById('editDueDateTo').value;
+
+  // Build API URL with date range parameters
+  let apiUrl = `/api/available_for_edit?trip_id=${editTripId}`;
+  if (dateFrom && dateTo) {
+    apiUrl += `&due_date_from=${dateFrom}&due_date_to=${dateTo}`;
+  } else if (editDeliveryDate) {
+    // Fallback to delivery_date if no date range selected
+    apiUrl += `&delivery_date=${editDeliveryDate}`;
+  }
+
+  fetch(apiUrl)
     .then(res => res.json())
     .then(data => {
       editAllShipments = data;
       filterEditShipments();
       renderSelectedShipments();
-
-      // Show modal
-      const editModal = new bootstrap.Modal(document.getElementById('editTripModal'));
-      editModal.show();
     })
     .catch(error => {
       console.error('Error loading shipments:', error);
@@ -1306,13 +1433,74 @@ function openEditTripModal() {
 function filterEditShipments() {
   const selectedArea = document.getElementById('editAreaFilter').value;
 
-  if (!selectedArea) {
-    editShipments = editAllShipments;
-  } else {
-    editShipments = editAllShipments.filter(item => item.area === selectedArea);
+  // Start with all shipments (already filtered by date range from server)
+  editShipments = editAllShipments;
+
+  // Filter by area (client-side)
+  if (selectedArea) {
+    editShipments = editShipments.filter(item => item.area === selectedArea);
   }
 
   renderEditShipments();
+}
+
+function renderCurrentTripShipments(shipments) {
+  const container = document.getElementById('currentTripShipments');
+
+  if (!shipments || shipments.length === 0) {
+    container.innerHTML = '<p class="text-muted small">No shipments currently in this trip.</p>';
+    return;
+  }
+
+  let html = '<div class="list-group list-group-flush">';
+  shipments.forEach(shipment => {
+    html += `
+      <div class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+          <strong>${shipment.document_number}</strong> - ${shipment.branch_name_v2}
+          <br><small class="text-muted">CBM: ${shipment.total_cbm ? shipment.total_cbm.toFixed(2) : 'N/A'} | Due: ${shipment.due_date || 'N/A'}</small>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-danger"
+                onclick="removeShipmentFromTrip('${shipment.data_id}', '${shipment.document_number}', '${shipment.branch_name_v2}')">
+          <i class="bi bi-trash"></i> Remove
+        </button>
+      </div>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function removeShipmentFromTrip(dataId, docNumber, branchName) {
+  if (!confirm(`Are you sure you want to remove ${docNumber} - ${branchName} from this trip?`)) {
+    return;
+  }
+
+  fetch('/remove_shipment_from_trip', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      trip_id: editTripId,
+      data_id: dataId
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Close modal and reload page to show updated CBM and utilization
+      editTripModal.hide();
+      editTripModal.dispose();
+      editTripModal = null;
+      location.reload();
+    } else {
+      alert('Error removing shipment: ' + data.message);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('An error occurred while removing the shipment');
+  });
 }
 
 function renderEditShipments() {
@@ -1446,9 +1634,10 @@ function addSelectedShipmentsToTrip() {
   .then(response => response.json())
   .then(data => {
     if (data.success) {
-      // Close modal
-      const editModal = bootstrap.Modal.getInstance(document.getElementById('editTripModal'));
-      editModal.hide();
+      // Close modal and dispose to remove backdrop
+      editTripModal.hide();
+      editTripModal.dispose();
+      editTripModal = null;
       // Reload page
       location.reload();
     } else {

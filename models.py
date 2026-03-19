@@ -96,6 +96,7 @@ class Trip(db.Model):
                                 backref=db.backref('trips_as_assistant', lazy='dynamic'))
 
     total_cbm = db.Column(db.Float, default=0.0)  # Optional: can be computed
+    completed = db.Column(db.Boolean, default=False)  # Track if trip is marked as complete
 
 class TripDetail(db.Model):
     __tablename__ = 'trip_detail'
