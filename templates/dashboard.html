@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+
 {% block content %}
 <!-- Action Bar -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
