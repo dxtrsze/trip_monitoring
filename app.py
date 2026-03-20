@@ -2747,6 +2747,279 @@ def reports():
         return redirect(url_for('view_schedule'))
     return render_template('reports.html')
 
+# Dashboard API Routes
+@app.route('/api/dashboard/kpis')
+@login_required
+def dashboard_kpis():
+    if current_user.position != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+
+    from datetime import date, timedelta
+
+    # Check cache unless refresh requested
+    bypass_cache = request.args.get('refresh') == 'true'
+    cache_key = f"dashboard_kpis_{request.args.get('start_date', 'default')}_{request.args.get('end_date', 'default')}"
+
+    if not bypass_cache:
+        cached = cache.get(cache_key)
+        if cached:
+            return jsonify(cached)
+
+    # Default to last 7 days
+    end_date = date.today()
+    start_date = end_date - timedelta(days=6)
+    previous_end_date = start_date - timedelta(days=1)
+    previous_start_date = previous_end_date - timedelta(days=6)
+
+    # Parse query params if provided
+    if request.args.get('start_date'):
+        start_date = datetime.strptime(request.args.get('start_date'), '%Y-%m-%d').date()
+    if request.args.get('end_date'):
+        end_date = datetime.strptime(request.args.get('end_date'), '%Y-%m-%d').date()
+
+    # Ensure end_date is not in the future
+    if end_date > date.today():
+        end_date = date.today()
+
+    # Calculate previous period
+    period_length = (end_date - start_date).days + 1
+    previous_end_date = start_date - timedelta(days=1)
+    previous_start_date = previous_end_date - timedelta(days=period_length - 1)
+
+    # Calculate current period KPIs
+    kpis = calculate_period_kpis(start_date, end_date)
+
+    # Calculate previous period KPIs for trends
+    previous_kpis = calculate_period_kpis(previous_start_date, previous_end_date)
+
+    # Calculate trends (percentage point difference)
+    def calculate_trend(current, previous):
+        if previous is None or previous == 0:
+            return 0
+        return round(current - previous, 1)
+
+    # Calculate daily KPI values for sparklines
+    daily_kpis = calculate_daily_kpis(start_date, end_date)
+
+    # Build response with sparkline data
+    response = {
+        'on_time_delivery_rate': {
+            'value': kpis['on_time_rate'],
+            'trend': calculate_trend(kpis['on_time_rate'], previous_kpis['on_time_rate']),
+            'sparkline': [d['on_time_rate'] for d in daily_kpis]
+        },
+        'in_full_delivery_rate': {
+            'value': kpis['in_full_rate'],
+            'trend': calculate_trend(kpis['in_full_rate'], previous_kpis['in_full_rate']),
+            'sparkline': [d['in_full_rate'] for d in daily_kpis]
+        },
+        'difot_score': {
+            'value': kpis['difot_score'],
+            'trend': calculate_trend(kpis['difot_score'], previous_kpis['difot_score']),
+            'sparkline': [d['difot_score'] for d in daily_kpis]
+        },
+        'truck_utilization': {
+            'value': kpis['utilization'],
+            'trend': calculate_trend(kpis['utilization'], previous_kpis['utilization']),
+            'sparkline': [d['utilization'] for d in daily_kpis]
+        },
+        'fuel_efficiency': {
+            'value': kpis['km_per_liter'],
+            'trend': calculate_trend(kpis['km_per_liter'], previous_kpis['km_per_liter']),
+            'sparkline': [d['km_per_liter'] for d in daily_kpis]
+        },
+        'fuel_cost_per_km': {
+            'value': kpis['cost_per_km'],
+            'trend': calculate_trend(kpis['cost_per_km'], previous_kpis['cost_per_km']),
+            'sparkline': [d['cost_per_km'] for d in daily_kpis]
+        },
+        'data_completeness': {
+            'value': kpis['completeness'],
+            'trend': calculate_trend(kpis['completeness'], previous_kpis['completeness']),
+            'sparkline': [d['completeness'] for d in daily_kpis]
+        },
+        'period': {
+            'start_date': start_date.isoformat(),
+            'end_date': end_date.isoformat(),
+            'previous_start_date': previous_start_date.isoformat(),
+            'previous_end_date': previous_end_date.isoformat()
+        }
+    }
+
+    # Cache response for 5 minutes
+    cache.set(cache_key, response, timeout=300)
+
+    return jsonify(response)
+
+
+def calculate_period_kpis(start_date, end_date):
+    """Calculate all KPIs for a given date period"""
+
+    # On-Time Delivery Rate
+    on_time_details = db.session.query(TripDetail).join(Trip).join(Schedule).filter(
+        Schedule.delivery_schedule.between(start_date, end_date),
+        TripDetail.original_due_date.isnot(None),
+        Schedule.delivery_schedule <= TripDetail.original_due_date
+    ).count()
+
+    total_details_with_due = db.session.query(TripDetail).join(Trip).join(Schedule).filter(
+        Schedule.delivery_schedule.between(start_date, end_date),
+        TripDetail.original_due_date.isnot(None)
+    ).count()
+
+    on_time_rate = (on_time_details / total_details_with_due * 100) if total_details_with_due > 0 else 0
+
+    # In-Full Delivery Rate
+    in_full_details = db.session.query(TripDetail).join(Trip).join(Schedule).filter(
+        Schedule.delivery_schedule.between(start_date, end_date),
+        TripDetail.total_delivered_qty >= TripDetail.total_ordered_qty
+    ).count()
+
+    total_details = db.session.query(TripDetail).join(Trip).join(Schedule).filter(
+        Schedule.delivery_schedule.between(start_date, end_date)
+    ).count()
+
+    in_full_rate = (in_full_details / total_details * 100) if total_details > 0 else 0
+
+    # DIFOT Score
+    difot_score = (on_time_rate + in_full_rate) / 2
+
+    # Truck Utilization
+    from sqlalchemy import func as sql_func
+    utilization_records = db.session.query(
+        Trip.vehicle_id,
+        Vehicle.plate_number,
+        Vehicle.capacity,
+        sql_func.sum(Trip.total_cbm).label('total_loaded_cbm'),
+        sql_func.count(Trip.id).label('trip_count')
+    ).join(Vehicle).join(Schedule).filter(
+        Schedule.delivery_schedule.between(start_date, end_date),
+        Vehicle.capacity.isnot(None),
+        Vehicle.capacity > 0
+    ).group_by(Trip.vehicle_id, Vehicle.plate_number, Vehicle.capacity).all()
+
+    total_weighted_util = sum([
+        (r.total_loaded_cbm / r.capacity * 100) * r.trip_count
+        for r in utilization_records
+    ]) if utilization_records else 0
+
+    total_trips = sum([r.trip_count for r in utilization_records]) if utilization_records else 0
+    utilization = (total_weighted_util / total_trips) if total_trips > 0 else 0
+
+    # Fuel Efficiency (simplified for now)
+    start_datetime = datetime.combine(start_date, datetime.min.time())
+    end_datetime = datetime.combine(end_date, datetime.max.time())
+
+    fuel_efficiency_data = []
+    for vehicle in db.session.query(Vehicle).filter(Vehicle.status == 'Active').all():
+        odo_readings = db.session.query(Odo).filter(
+            Odo.plate_number == vehicle.plate_number,
+            Odo.datetime.between(start_datetime, end_datetime)
+        ).order_by(Odo.datetime).all()
+
+        if not odo_readings:
+            continue
+
+        total_km = 0
+        total_liters = 0
+        total_amount = 0
+        last_end_odo = None
+
+        for reading in odo_readings:
+            if reading.status == 'start odo':
+                last_end_odo = reading.odometer_reading
+            elif reading.status == 'end odo' and last_end_odo is not None:
+                distance = reading.odometer_reading - last_end_odo
+                if distance > 0:
+                    total_km += distance
+                last_end_odo = None
+            elif reading.status == 'refill odo':
+                if reading.litters:
+                    total_liters += reading.litters
+                if reading.amount:
+                    total_amount += reading.amount
+
+        if total_km > 0 and total_liters > 0:
+            km_per_liter = total_km / total_liters
+            cost_per_km = total_amount / total_km if total_km > 0 else 0
+            fuel_efficiency_data.append({
+                'km_per_liter': km_per_liter,
+                'cost_per_km': cost_per_km,
+                'distance': total_km
+            })
+
+    total_distance = sum([d['distance'] for d in fuel_efficiency_data])
+    if total_distance > 0:
+        km_per_liter = sum([
+            d['km_per_liter'] * d['distance']
+            for d in fuel_efficiency_data
+        ]) / total_distance
+        cost_per_km = sum([
+            d['cost_per_km'] * d['distance']
+            for d in fuel_efficiency_data
+        ]) / total_distance
+    else:
+        km_per_liter = 0
+        cost_per_km = 0
+
+    # Data Completeness (count unique incomplete details, not double-counting)
+    from sqlalchemy import or_
+    incomplete_details = db.session.query(TripDetail).join(Trip).join(Schedule).filter(
+        Schedule.delivery_schedule.between(start_date, end_date),
+        or_(TripDetail.arrive.is_(None), TripDetail.departure.is_(None))
+    ).count()
+
+    vehicles_with_trips = db.session.query(Trip.vehicle_id).join(Schedule).filter(
+        Schedule.delivery_schedule.between(start_date, end_date)
+    ).distinct().all()
+
+    vehicle_ids = [v[0] for v in vehicles_with_trips]
+    vehicles_without_odo = 0
+
+    for vehicle_id in vehicle_ids:
+        vehicle = db.session.query(Vehicle).get(vehicle_id)
+        odo_count = db.session.query(Odo).filter(
+            Odo.plate_number == vehicle.plate_number,
+            Odo.datetime.between(start_datetime, end_datetime)
+        ).count()
+        if odo_count == 0:
+            vehicles_without_odo += 1
+
+    complete_details = total_details - incomplete_details
+    completeness = (complete_details / total_details * 100) if total_details > 0 else 0
+
+    return {
+        'on_time_rate': round(on_time_rate, 1),
+        'in_full_rate': round(in_full_rate, 1),
+        'difot_score': round(difot_score, 1),
+        'utilization': round(utilization, 1),
+        'km_per_liter': round(km_per_liter, 1),
+        'cost_per_km': round(cost_per_km, 2),
+        'completeness': round(completeness, 1)
+    }
+
+
+def calculate_daily_kpis(start_date, end_date):
+    """Calculate daily KPI values for sparkline visualization"""
+    daily_values = []
+    current_date = start_date
+
+    while current_date <= end_date:
+        day_kpis = calculate_period_kpis(current_date, current_date)
+        daily_values.append({
+            'date': current_date.isoformat(),
+            'on_time_rate': day_kpis['on_time_rate'],
+            'in_full_rate': day_kpis['in_full_rate'],
+            'difot_score': day_kpis['difot_score'],
+            'utilization': day_kpis['utilization'],
+            'km_per_liter': day_kpis['km_per_liter'],
+            'cost_per_km': day_kpis['cost_per_km'],
+            'completeness': day_kpis['completeness']
+        })
+        current_date += timedelta(days=1)
+
+    return daily_values
+
 # Time Log Routes
 @app.route('/time_logs')
 @login_required
