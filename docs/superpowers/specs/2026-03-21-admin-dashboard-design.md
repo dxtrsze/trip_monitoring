@@ -48,14 +48,51 @@ GET /api/dashboard/kpis
 - Returns all 6 KPI summary values and trends
 - Query params: start_date, end_date (default: last 7 days)
 - Response: {
-    on_time_delivery_rate: { value: 87.5, trend: +2.3 },
-    in_full_delivery_rate: { value: 92.1, trend: -0.5 },
-    difot_score: { value: 89.8, trend: +0.9 },
-    truck_utilization: { value: 76.4, trend: +3.2 },
-    fuel_efficiency: { value: 12.8, trend: -0.4 },
-    fuel_cost_per_km: { value: 8.45, trend: +0.12 },
-    data_completeness: { value: 94.2, trend: +1.1 }
+    on_time_delivery_rate: {
+      value: 87.5,
+      trend: +2.3,
+      sparkline: [85.2, 86.1, 84.5, 87.0, 88.2, 87.1, 87.5]
+    },
+    in_full_delivery_rate: {
+      value: 92.1,
+      trend: -0.5,
+      sparkline: [93.0, 92.8, 92.5, 91.9, 92.0, 92.3, 92.1]
+    },
+    difot_score: {
+      value: 89.8,
+      trend: +0.9,
+      sparkline: [88.5, 89.1, 88.8, 89.2, 89.5, 89.6, 89.8]
+    },
+    truck_utilization: {
+      value: 76.4,
+      trend: +3.2,
+      sparkline: [72.1, 73.5, 74.2, 75.0, 75.8, 76.1, 76.4]
+    },
+    fuel_efficiency: {
+      value: 12.8,
+      trend: -0.4,
+      sparkline: [13.5, 13.2, 13.0, 12.9, 12.7, 12.8, 12.8]
+    },
+    fuel_cost_per_km: {
+      value: 8.45,
+      trend: +0.12,
+      sparkline: [8.20, 8.25, 8.30, 8.35, 8.40, 8.42, 8.45]
+    },
+    data_completeness: {
+      value: 94.2,
+      trend: +1.1,
+      sparkline: [92.5, 93.0, 93.2, 93.8, 93.9, 94.0, 94.2]
+    },
+    period: {
+      start_date: '2026-03-14',
+      end_date: '2026-03-21',
+      previous_start_date: '2026-03-07',
+      previous_end_date: '2026-03-13'
+    }
   }
+
+Note: sparkline arrays contain daily KPI values for current period (7 values for 7-day period)
+Trend is percentage point difference vs previous period (not percentage change)
 
 GET /api/dashboard/trends
 - Time-series data for line charts
@@ -70,10 +107,26 @@ GET /api/dashboard/comparisons
 - Ranked data for bar charts
 - Query params: start_date, end_date
 - Response: {
-    vehicle_utilization: [{ plate_number: 'ABC-123', utilization: 85.2, rank: 1 }, ...],
-    branch_frequency: [{ branch: 'Manila', delivery_count: 156, rank: 1 }, ...],
-    driver_performance: [{ name: 'Juan Dela Cruz', trips: 42, role: 'driver', rank: 1 }, ...]
+    vehicle_utilization: [
+      { plate_number: 'ABC-123', utilization: 85.2, rank: 1, trip_count: 15 },
+      ...
+      { plate_number: 'XYZ-789', utilization: 42.1, rank: 20, trip_count: 8 }
+    ],
+    branch_frequency: [
+      { branch: 'Manila', delivery_count: 156, rank: 1 },
+      { branch: 'Quezon City', delivery_count: 142, rank: 2 },
+      ...
+      { branch: 'Others', delivery_count: 89, rank: 11 }  // Aggregate of branches outside top 10
+    ],
+    driver_performance: [
+      { name: 'Juan Dela Cruz', trips: 42, role: 'driver', rank: 1 },
+      { name: 'Pedro Santos', trips: 38, role: 'driver', rank: 2 },
+      ...
+      { name: 'Maria Reyes', trips: 35, role: 'assistant', rank: 15 }
+    ]
   }
+
+Note: Branch frequency "Others" aggregate combines all branches outside top 10 by delivery count
 
 GET /api/dashboard/gauges
 - Current values for gauge displays
@@ -88,26 +141,37 @@ GET /api/dashboard/gauges
 
 **On-Time Delivery Rate**:
 ```python
-on_time_count = db.session.query(Trip).join(Schedule).filter(
-    Trip.scheduled_date <= Trip.original_due_date,
-    Trip.scheduled_date.between(start_date, end_date)
+from sqlalchemy import func, case
+from datetime import datetime
+
+# Count TripDetails where scheduled delivery date <= original due date
+on_time_details = db.session.query(TripDetail).join(Trip).join(Schedule).filter(
+    Schedule.delivery_schedule.between(start_date, end_date),
+    TripDetail.original_due_date.isnot(None),
+    Schedule.delivery_schedule <= TripDetail.original_due_date
 ).count()
 
-total_deliveries = db.session.query(Trip).filter(
-    Trip.scheduled_date.between(start_date, end_date)
+total_details = db.session.query(TripDetail).join(Trip).join(Schedule).filter(
+    Schedule.delivery_schedule.between(start_date, end_date),
+    TripDetail.original_due_date.isnot(None)
 ).count()
 
-on_time_rate = (on_time_count / total_deliveries * 100) if total_deliveries > 0 else 0
+on_time_rate = (on_time_details / total_details * 100) if total_details > 0 else 0
 ```
 
 **In-Full Delivery Rate**:
 ```python
-in_full_count = db.session.query(Trip).filter(
-    Trip.total_delivered_qty >= Trip.total_ordered_qty,
-    Trip.scheduled_date.between(start_date, end_date)
+# Count TripDetails where delivered_qty >= ordered_qty
+in_full_details = db.session.query(TripDetail).join(Trip).join(Schedule).filter(
+    Schedule.delivery_schedule.between(start_date, end_date),
+    TripDetail.total_delivered_qty >= TripDetail.total_ordered_qty
 ).count()
 
-in_full_rate = (in_full_count / total_deliveries * 100) if total_deliveries > 0 else 0
+total_details = db.session.query(TripDetail).join(Trip).join(Schedule).filter(
+    Schedule.delivery_schedule.between(start_date, end_date)
+).count()
+
+in_full_rate = (in_full_details / total_details * 100) if total_details > 0 else 0
 ```
 
 **DIFOT Score**:
@@ -117,46 +181,134 @@ difot_score = (on_time_rate + in_full_rate) / 2
 
 **Truck Utilization**:
 ```python
+# Calculate actual CBM loaded vs vehicle capacity for each trip
 utilization_records = db.session.query(
+    Trip.vehicle_id,
+    Vehicle.plate_number,
     Vehicle.capacity,
-    func.sum(TripDetail.actual_cbm).label('total_actual')
-).join(Trip).join(Schedule).filter(
-    Schedule.delivery_schedule.between(start_date, end_date)
-).group_by(Vehicle.plate_number, Vehicle.capacity).all()
+    func.sum(Trip.total_cbm).label('total_loaded_cbm'),
+    func.count(Trip.id).label('trip_count')
+).join(Vehicle).join(Schedule).filter(
+    Schedule.delivery_schedule.between(start_date, end_date),
+    Vehicle.capacity.isnot(None),
+    Vehicle.capacity > 0
+).group_by(Trip.vehicle_id, Vehicle.plate_number, Vehicle.capacity).all()
 
-utilization_percent = sum([
-    (r.total_actual / r.capacity * 100) for r in utilization_records if r.capacity > 0
-]) / len(utilization_records) if utilization_records else 0
+# Calculate weighted average utilization (weighted by trip count)
+total_weighted_util = sum([
+    (r.total_loaded_cbm / r.capacity * 100) * r.trip_count
+    for r in utilization_records
+])
+total_trips = sum([r.trip_count for r in utilization_records])
+
+utilization_percent = (total_weighted_util / total_trips) if total_trips > 0 else 0
+
+# Note: Vehicles with no trips in period are excluded from average
 ```
 
 **Fuel Efficiency**:
 ```python
-# KM per liter per vehicle
-odo_records = db.session.query(Odo).filter(
-    Odo.datetime.between(start_datetime, end_datetime)
-).order_by(Odo.datetime).all()
+# Calculate KM/Liter for each vehicle using ODO readings
+fuel_efficiency_data = []
 
-# Calculate distance traveled and fuel consumed per vehicle
-# Weighted average by distance
+for vehicle in db.session.query(Vehicle).filter(Vehicle.status == 'Active').all():
+    # Get all ODO readings for this vehicle in the period
+    odo_readings = db.session.query(Odo).filter(
+        Odo.plate_number == vehicle.plate_number,
+        Odo.datetime.between(start_datetime, end_datetime)
+    ).order_by(Odo.datetime).all()
+
+    if not odo_readings:
+        continue
+
+    # Pair start and end ODO readings to calculate distance
+    total_km = 0
+    total_liters = 0
+    total_amount = 0
+    last_end_odo = None
+
+    for reading in odo_readings:
+        if reading.status == 'start odo':
+            last_end_odo = reading.odometer_reading
+        elif reading.status == 'end odo' and last_end_odo is not None:
+            distance = reading.odometer_reading - last_end_odo
+            if distance > 0:
+                total_km += distance
+            last_end_odo = None
+        elif reading.status == 'refill odo':
+            if reading.litters:
+                total_liters += reading.litters
+            if reading.amount:
+                total_amount += reading.amount
+
+    if total_km > 0 and total_liters > 0:
+        km_per_liter = total_km / total_liters
+        cost_per_km = total_amount / total_km if total_km > 0 else 0
+        fuel_efficiency_data.append({
+            'plate_number': vehicle.plate_number,
+            'km_per_liter': km_per_liter,
+            'cost_per_km': cost_per_km,
+            'distance': total_km
+        })
+
+# Calculate weighted average by distance traveled
+total_distance = sum([d['distance'] for d in fuel_efficiency_data])
+if total_distance > 0:
+    weighted_km_per_liter = sum([
+        d['km_per_liter'] * d['distance']
+        for d in fuel_efficiency_data
+    ]) / total_distance
+    weighted_cost_per_km = sum([
+        d['cost_per_km'] * d['distance']
+        for d in fuel_efficiency_data
+    ]) / total_distance
+else:
+    weighted_km_per_liter = 0
+    weighted_cost_per_km = 0
 ```
 
 **Data Completeness**:
 ```python
-total_trips = db.session.query(Trip).join(Schedule).filter(
+# Total trip details in period
+total_details = db.session.query(TripDetail).join(Trip).join(Schedule).filter(
     Schedule.delivery_schedule.between(start_date, end_date)
 ).count()
 
-trips_missing_arrival = db.session.query(Trip).join(Schedule).filter(
+# Trip details missing arrival time
+details_missing_arrival = db.session.query(TripDetail).join(Trip).join(Schedule).filter(
     Schedule.delivery_schedule.between(start_date, end_date),
-    Trip.arrive_time.is_(None)
+    TripDetail.arrive.is_(None)
 ).count()
 
-trips_missing_odo = db.session.query(Schedule).filter(
+# Trip details missing departure time
+details_missing_departure = db.session.query(TripDetail).join(Trip).join(Schedule).filter(
     Schedule.delivery_schedule.between(start_date, end_date),
-    ~Schedule.odo_records.any()
+    TripDetail.departure.is_(None)
 ).count()
 
-completeness = ((total_trips - trips_missing_arrival - trips_missing_odo) / total_trips * 100) if total_trips > 0 else 0
+# Check for missing ODO records by querying vehicles that had trips
+vehicles_with_trips = db.session.query(Trip.vehicle_id).join(Schedule).filter(
+    Schedule.delivery_schedule.between(start_date, end_date)
+).distinct().all()
+
+vehicle_ids = [v[0] for v in vehicles_with_trips]
+vehicles_without_odo = 0
+
+for vehicle_id in vehicle_ids:
+    vehicle = db.session.query(Vehicle).get(vehicle_id)
+    odo_count = db.session.query(Odo).filter(
+        Odo.plate_number == vehicle.plate_number,
+        Odo.datetime.between(start_datetime, end_datetime)
+    ).count()
+    if odo_count == 0:
+        vehicles_without_odo += 1
+
+# Calculate completeness: avoid double-counting by tracking unique incomplete details
+# A detail is incomplete if missing arrival OR departure OR vehicle has no ODO
+incomplete_details = details_missing_arrival + details_missing_departure
+complete_details = total_details - incomplete_details
+
+completeness = (complete_details / total_details * 100) if total_details > 0 else 0
 ```
 
 ### Frontend Architecture
@@ -289,8 +441,34 @@ document.getElementById('refreshBtn').addEventListener('click', () => {
 
 ### API Error Handling
 - Format: `{"error": "Human-readable message", "details": "Technical context"}`
-- Client displays dismissible error banner at top
-- Failed chart sections show "Unable to load data. Retry?" button
+- Client displays dismissible error banner at top of dashboard (below action bar)
+- Error banner: Red background, white text, auto-dismiss after 10 seconds or manual close (X button)
+- Failed chart sections show "Unable to load data. Retry?" button that retries individual endpoint
+- Network errors show specific message: "Unable to connect to server. Check your internet connection."
+
+### Caching Strategy
+
+**Backend Caching** (using existing SimpleCache):
+- KPI endpoint: Cache for 5 minutes
+  - Reason: Expensive aggregations, changes infrequently within 5 minutes
+  - Key: `dashboard_kpis_{start_date}_{end_date}`
+- Trends endpoint: Cache for 10 minutes
+  - Reason: Historical data doesn't change, longer cache acceptable
+  - Key: `dashboard_trends_{start_date}_{end_date}_{granularity}`
+- Comparisons endpoint: Cache for 10 minutes
+  - Reason: Ranked data stable over time
+  - Key: `dashboard_comparisons_{start_date}_{end_date}`
+- Gauges endpoint: Cache for 5 minutes (or remove if redundant with KPIs)
+
+**Cache Invalidation**:
+- Manual refresh button bypasses cache (`?refresh=true` query param)
+- Auto-invalidate when new trips/ODO records added (listen to model changes in Phase 2)
+- Cache keys include date ranges, automatically invalidates when dates change
+
+**Frontend Caching**:
+- ECharts instances cached in JavaScript variables
+- Destroy and recreate charts on refresh (prevents memory leaks)
+- Store previous period data for trend comparison (in-memory)
 
 ### Browser Compatibility
 - **Supported**: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
@@ -394,9 +572,48 @@ document.getElementById('refreshBtn').addEventListener('click', () => {
 - Flask-Caching (SimpleCache already in codebase)
 - Database indexes on frequently queried fields
 
-## Open Questions & Future Enhancements
+## Clarifications & Decisions
 
-### Phase 2 Enhancements (Not in initial scope)
+### Business Logic Decisions
+
+**1. Trip-to-Delivery Relationship for DIFOT**
+- A TripDetail is considered "on-time" if `Schedule.delivery_schedule <= TripDetail.original_due_date`
+- A TripDetail is considered "in-full" if `TripDetail.total_delivered_qty >= TripDetail.total_ordered_qty`
+- KPIs are calculated at TripDetail level (not Trip level) since multiple deliveries can happen per trip
+- This matches the existing DIFOT report implementation
+
+**2. Odo-to-Schedule Link**
+- Odo records are linked to Vehicle, not Schedule or Trip
+- For data completeness, we check if a vehicle that had trips in the period has any ODO records in the same datetime range
+- This assumes ODO records are logged daily for active vehicles
+
+**3. Truck Utilization Baseline**
+- Vehicles with NO trips in the period are excluded from the utilization average
+- This provides a more accurate measure of active fleet performance
+- Alternative approach (counting inactive vehicles as 0%) can be added in Phase 2 if needed
+
+**4. Data Completeness Business Rule**
+- TripDetails missing arrival OR departure time are counted as incomplete
+- Vehicles with trips but no ODO records in the period are flagged
+- Missing arrival and missing departure are tracked separately (not double-counted)
+- Formula: `completeness = (total_details - incomplete_details) / total_details * 100`
+
+**5. Fuel Cost Calculation**
+- Cost per KM uses weighted average by distance traveled
+- Vehicles with more distance contribute more to the average
+- Formula: `weighted_cost_per_km = sum(cost_per_km_i * distance_i) / sum(distance_i)`
+
+**6. Weekly Aggregation**
+- Weeks start on Monday (ISO 8601 standard)
+- Can be made configurable in Phase 2 if needed
+
+**7. Trend Calculation**
+- Trend values compare current period vs previous period of same length
+- Example: For 7-day dashboard (Mar 15-21), compare with previous 7 days (Mar 8-14)
+- Trend is percentage point difference, not percentage change
+- Example: On-time rate was 85% last period, 87.5% this period = +2.5 trend
+
+## Open Questions & Future Enhancements
 - Custom target thresholds for KPIs (currently using placeholder 80%)
 - Scheduled report delivery (email dashboard PDF on schedule)
 - User-role customization (different views for admins, coordinators)
