@@ -50,3 +50,16 @@ def test_kpis_period_info_present(client, auth_headers):
     assert 'period' in data
     assert 'start_date' in data['period']
     assert 'end_date' in data['period']
+
+def test_trends_endpoint_returns_json(client, auth_headers):
+    response = client.get('/api/dashboard/trends')
+    assert response.status_code == 200
+    assert response.content_type == 'application/json'
+
+def test_trends_contains_required_data(client, auth_headers):
+    response = client.get('/api/dashboard/trends')
+    data = response.get_json()
+    required_keys = ['daily_deliveries', 'fuel_efficiency', 'truck_utilization']
+    for key in required_keys:
+        assert key in data
+        assert isinstance(data[key], list)

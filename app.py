@@ -3016,6 +3016,149 @@ def calculate_daily_kpis(start_date, end_date):
 
     return daily_values
 
+
+@app.route('/api/dashboard/trends')
+@login_required
+def dashboard_trends():
+    if current_user.position != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+
+    from datetime import date, timedelta, datetime
+    from sqlalchemy import func as sql_func
+
+    # Default to last 7 days
+    end_date = date.today()
+    start_date = end_date - timedelta(days=6)
+
+    # Parse query params if provided
+    try:
+        if request.args.get('start_date'):
+            start_date = datetime.strptime(request.args.get('start_date'), '%Y-%m-%d').date()
+        if request.args.get('end_date'):
+            end_date = datetime.strptime(request.args.get('end_date'), '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+
+    # Validate date range
+    if start_date > end_date:
+        return jsonify({'error': 'start_date must be before or equal to end_date'}), 400
+
+    # Ensure end_date is not in the future
+    if end_date > date.today():
+        end_date = date.today()
+
+    granularity = request.args.get('granularity', 'daily')
+
+    # Daily delivery counts
+    delivery_counts = []
+    current_date = start_date
+    while current_date <= end_date:
+        count = db.session.query(TripDetail).join(Trip).join(Schedule).filter(
+            Schedule.delivery_schedule == current_date
+        ).count()
+        delivery_counts.append({
+            'date': current_date.isoformat(),
+            'count': count
+        })
+        current_date += timedelta(days=1)
+
+    # Fuel efficiency trend (calculate daily using ODO pairing logic)
+    fuel_efficiency = []
+    current_date = start_date
+    while current_date <= end_date:
+        day_start = datetime.combine(current_date, datetime.min.time())
+        day_end = datetime.combine(current_date, datetime.max.time())
+
+        # Calculate daily fuel efficiency using same logic as KPI calculation
+        daily_fe_data = []
+        for vehicle in db.session.query(Vehicle).filter(Vehicle.status == 'Active').all():
+            odo_readings = db.session.query(Odo).filter(
+                Odo.plate_number == vehicle.plate_number,
+                Odo.datetime.between(day_start, day_end)
+            ).order_by(Odo.datetime).all()
+
+            if not odo_readings:
+                continue
+
+            total_km = 0
+            total_liters = 0
+            total_amount = 0
+            last_end_odo = None
+
+            for reading in odo_readings:
+                if reading.status == 'start odo':
+                    last_end_odo = reading.odometer_reading
+                elif reading.status == 'end odo' and last_end_odo is not None:
+                    distance = reading.odometer_reading - last_end_odo
+                    if distance > 0:
+                        total_km += distance
+                    last_end_odo = None
+                elif reading.status == 'refill odo':
+                    if reading.litters:
+                        total_liters += reading.litters
+                    if reading.amount:
+                        total_amount += reading.amount
+
+            if total_km > 0 and total_liters > 0:
+                daily_fe_data.append({
+                    'km_per_liter': total_km / total_liters,
+                    'cost_per_km': total_amount / total_km if total_km > 0 else 0,
+                    'distance': total_km
+                })
+
+        # Calculate daily average
+        total_distance = sum([d['distance'] for d in daily_fe_data])
+        if total_distance > 0:
+            daily_km_per_liter = sum([
+                d['km_per_liter'] * d['distance']
+                for d in daily_fe_data
+            ]) / total_distance
+            daily_cost_per_km = sum([
+                d['cost_per_km'] * d['distance']
+                for d in daily_fe_data
+            ]) / total_distance
+        else:
+            daily_km_per_liter = 0
+            daily_cost_per_km = 0
+
+        fuel_efficiency.append({
+            'date': current_date.isoformat(),
+            'km_per_liter': round(daily_km_per_liter, 1),
+            'cost_per_km': round(daily_cost_per_km, 2)
+        })
+
+        current_date += timedelta(days=1)
+
+    # Truck utilization trend
+    truck_utilization = []
+    current_date = start_date
+    while current_date <= end_date:
+        utilization_records = db.session.query(
+            sql_func.sum(Trip.total_cbm).label('total_loaded'),
+            sql_func.sum(Vehicle.capacity).label('total_capacity')
+        ).join(Vehicle).join(Schedule).filter(
+            Schedule.delivery_schedule == current_date,
+            Vehicle.capacity.isnot(None),
+            Vehicle.capacity > 0
+        ).first()
+
+        if utilization_records and utilization_records.total_capacity:
+            util_percent = (utilization_records.total_loaded / utilization_records.total_capacity * 100)
+        else:
+            util_percent = 0
+
+        truck_utilization.append({
+            'date': current_date.isoformat(),
+            'utilization_percent': round(util_percent, 1)
+        })
+        current_date += timedelta(days=1)
+
+    return jsonify({
+        'daily_deliveries': delivery_counts,
+        'fuel_efficiency': fuel_efficiency,
+        'truck_utilization': truck_utilization
+    })
+
 # Time Log Routes
 @app.route('/time_logs')
 @login_required
