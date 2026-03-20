@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 import pandas as pd
-from models import db, Vehicle, Manpower, Data, Schedule, Trip, TripDetail, Cluster, User, Odo, DailyVehicleCount, Backload, TimeLog, LCLSummary, LCLDetail, ArchiveLog
+from models import db, Vehicle, Manpower, Data, Schedule, Trip, TripDetail, Cluster, User, Odo, DailyVehicleCount, Backload, TimeLog, LCLSummary, LCLDetail, ArchiveLog, trip_driver, trip_assistant
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload, subqueryload
 from functools import wraps
@@ -3166,6 +3166,141 @@ def dashboard_trends():
         'daily_deliveries': delivery_counts,
         'fuel_efficiency': fuel_efficiency,
         'truck_utilization': truck_utilization
+    })
+
+
+@app.route('/api/dashboard/comparisons')
+@login_required
+def dashboard_comparisons():
+    if current_user.position != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+
+    from datetime import date, timedelta, datetime
+    from sqlalchemy import func as sql_func
+
+    # Default to last 7 days
+    end_date = date.today()
+    start_date = end_date - timedelta(days=6)
+
+    # Parse query params if provided
+    try:
+        if request.args.get('start_date'):
+            start_date = datetime.strptime(request.args.get('start_date'), '%Y-%m-%d').date()
+        if request.args.get('end_date'):
+            end_date = datetime.strptime(request.args.get('end_date'), '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+
+    # Validate date range
+    if start_date > end_date:
+        return jsonify({'error': 'start_date must be before or equal to end_date'}), 400
+
+    max_days = 90
+    if (end_date - start_date).days > max_days:
+        return jsonify({'error': f'Date range cannot exceed {max_days} days'}), 400
+
+    # Ensure end_date is not in the future
+    if end_date > date.today():
+        end_date = date.today()
+
+    # Vehicle utilization ranking
+    vehicle_util = db.session.query(
+        Vehicle.plate_number,
+        sql_func.sum(Trip.total_cbm).label('total_cbm'),
+        Vehicle.capacity,
+        sql_func.count(Trip.id).label('trip_count')
+    ).join(Trip).join(Schedule).filter(
+        Schedule.delivery_schedule.between(start_date, end_date),
+        Vehicle.capacity.isnot(None),
+        Vehicle.capacity > 0
+    ).group_by(Vehicle.plate_number, Vehicle.capacity).all()
+
+    vehicle_utilization_list = []
+    for i, v in enumerate(sorted(vehicle_util, key=lambda x: (x.total_cbm / x.capacity * 100) if x.capacity else 0, reverse=True)):
+        utilization = (v.total_cbm / v.capacity * 100) if v.capacity else 0
+        vehicle_utilization_list.append({
+            'plate_number': v.plate_number,
+            'utilization': round(utilization, 1),
+            'rank': i + 1,
+            'trip_count': v.trip_count
+        })
+
+    # Branch frequency ranking
+    from sqlalchemy import desc
+
+    branch_counts = db.session.query(
+        TripDetail.branch_name_v2,
+        sql_func.count(TripDetail.id).label('delivery_count')
+    ).join(Trip).join(Schedule).filter(
+        Schedule.delivery_schedule.between(start_date, end_date)
+    ).group_by(TripDetail.branch_name_v2).order_by(
+        desc('delivery_count')
+    ).limit(10).all()
+
+    branch_frequency = []
+    others_count = 0
+    for i, b in enumerate(branch_counts):
+        branch_frequency.append({
+            'branch': b.branch_name_v2,
+            'delivery_count': b.delivery_count,
+            'rank': i + 1
+        })
+
+    # Count "Others"
+    total_top_10 = sum([b.delivery_count for b in branch_counts])
+    total_all = db.session.query(TripDetail).join(Trip).join(Schedule).filter(
+        Schedule.delivery_schedule.between(start_date, end_date)
+    ).count()
+    others_count = total_all - total_top_10
+
+    if others_count > 0:
+        branch_frequency.append({
+            'branch': 'Others',
+            'delivery_count': others_count,
+            'rank': len(branch_frequency) + 1
+        })
+
+    # Driver/assistant performance
+    drivers = db.session.query(
+        Manpower.name,
+        sql_func.count(Trip.id).label('trips')
+    ).join(trip_driver, Manpower.id == trip_driver.c.manpower_id).join(
+        Trip, Trip.id == trip_driver.c.trip_id
+    ).join(Schedule).filter(
+        Schedule.delivery_schedule.between(start_date, end_date)
+    ).group_by(Manpower.name).all()
+
+    assistants = db.session.query(
+        Manpower.name,
+        sql_func.count(Trip.id).label('trips')
+    ).join(trip_assistant, Manpower.id == trip_assistant.c.manpower_id).join(
+        Trip, Trip.id == trip_assistant.c.trip_id
+    ).join(Schedule).filter(
+        Schedule.delivery_schedule.between(start_date, end_date)
+    ).group_by(Manpower.name).all()
+
+    driver_performance = []
+    all_performance = []
+
+    for d in drivers:
+        all_performance.append({'name': d.name, 'trips': d.trips, 'role': 'driver'})
+
+    for a in assistants:
+        all_performance.append({'name': a.name, 'trips': a.trips, 'role': 'assistant'})
+
+    all_performance_sorted = sorted(all_performance, key=lambda x: x['trips'], reverse=True)
+    for i, p in enumerate(all_performance_sorted):
+        driver_performance.append({
+            'name': p['name'],
+            'trips': p['trips'],
+            'role': p['role'],
+            'rank': i + 1
+        })
+
+    return jsonify({
+        'vehicle_utilization': vehicle_utilization_list,
+        'branch_frequency': branch_frequency,
+        'driver_performance': driver_performance
     })
 
 # Time Log Routes

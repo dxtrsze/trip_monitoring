@@ -63,3 +63,16 @@ def test_trends_contains_required_data(client, auth_headers):
     for key in required_keys:
         assert key in data
         assert isinstance(data[key], list)
+
+def test_comparisons_endpoint_returns_json(client, auth_headers):
+    response = client.get('/api/dashboard/comparisons')
+    assert response.status_code == 200
+    assert response.content_type == 'application/json'
+
+def test_comparisons_contains_rankings(client, auth_headers):
+    response = client.get('/api/dashboard/comparisons')
+    data = response.get_json()
+    required_keys = ['vehicle_utilization', 'branch_frequency', 'driver_performance']
+    for key in required_keys:
+        assert key in data
+        assert isinstance(data[key], list)
