@@ -6,17 +6,17 @@ from datetime import date, datetime, timedelta
 @pytest.fixture
 def client():
     app.config['TESTING'] = True
+
     with app.test_client() as client:
         with app.app_context():
-            db.create_all()
-            # Create test admin user
-            admin = User(email='admin@test.com', name='Admin', position='admin', status='active')
-            admin.set_password('password')
-            db.session.add(admin)
-            db.session.commit()
+            # Create test admin user if doesn't exist
+            admin = db.session.query(User).filter_by(email='admin@test.com').first()
+            if not admin:
+                admin = User(email='admin@test.com', name='Admin', position='admin', status='active')
+                admin.set_password('password')
+                db.session.add(admin)
+                db.session.commit()
         yield client
-        with app.app_context():
-            db.drop_all()
 
 @pytest.fixture
 def auth_headers(client):
@@ -76,3 +76,44 @@ def test_comparisons_contains_rankings(client, auth_headers):
     for key in required_keys:
         assert key in data
         assert isinstance(data[key], list)
+
+def test_gauges_endpoint_returns_json(client, auth_headers):
+    response = client.get('/api/dashboard/gauges')
+    assert response.status_code == 200
+    assert response.content_type == 'application/json'
+
+def test_gauges_contains_all_required_fields(client, auth_headers):
+    response = client.get('/api/dashboard/gauges')
+    data = response.get_json()
+    required_fields = ['on_time_rate', 'utilization', 'data_completeness']
+    for field in required_fields:
+        assert field in data
+
+def test_gauges_respects_date_parameters(client, auth_headers):
+    response = client.get('/api/dashboard/gauges?start_date=2026-03-15&end_date=2026-03-17')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert 'on_time_rate' in data
+    assert 'utilization' in data
+    assert 'data_completeness' in data
+
+def test_gauges_requires_admin_access(client):
+    # Create non-admin user if doesn't exist
+    from models import User
+    with app.app_context():
+        non_admin = db.session.query(User).filter_by(email='user@test.com').first()
+        if not non_admin:
+            non_admin = User(email='user@test.com', name='User', position='operations', status='active')
+            non_admin.set_password('password')
+            db.session.add(non_admin)
+            db.session.commit()
+
+    # Login as non-admin
+    response = client.post('/login', data={
+        'email': 'user@test.com',
+        'password': 'password'
+    }, follow_redirects=True)
+
+    # Try to access gauges endpoint
+    response = client.get('/api/dashboard/gauges')
+    assert response.status_code == 403

@@ -3303,6 +3303,35 @@ def dashboard_comparisons():
         'driver_performance': driver_performance
     })
 
+
+@app.route('/api/dashboard/gauges')
+@login_required
+def dashboard_gauges():
+    if current_user.position != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+
+    from datetime import date, timedelta
+
+    end_date = date.today()
+    start_date = end_date - timedelta(days=6)
+
+    if request.args.get('start_date'):
+        start_date = datetime.strptime(request.args.get('start_date'), '%Y-%m-%d').date()
+    if request.args.get('end_date'):
+        end_date = datetime.strptime(request.args.get('end_date'), '%Y-%m-%d').date()
+
+    if end_date > date.today():
+        end_date = date.today()
+
+    # Calculate current KPIs using helper function
+    kpis = calculate_period_kpis(start_date, end_date)
+
+    return jsonify({
+        'on_time_rate': kpis['on_time_rate'],
+        'utilization': kpis['utilization'],
+        'data_completeness': kpis['completeness']
+    })
+
 # Time Log Routes
 @app.route('/time_logs')
 @login_required
