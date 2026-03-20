@@ -22,6 +22,7 @@
   #vehicleUtilizationChart,
   #branchFrequencyChart,
   #driverPerformanceChart {
+    /* !important needed to override inline ECharts styles */
     height: 250px !important;
   }
 }
@@ -33,6 +34,7 @@
   #vehicleUtilizationChart,
   #branchFrequencyChart,
   #driverPerformanceChart {
+    /* !important needed to override inline ECharts styles */
     height: 200px !important;
   }
 
@@ -51,10 +53,12 @@
     z-index: 1000;
     padding: 10px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    max-height: calc(100vh - 56px);
+    overflow-y: auto;
   }
 
-  /* Stack gauge charts on mobile */
-  .col-md-4 {
+  /* Stack gauge charts on mobile - scoped to Performance Metrics section */
+  .container-fluid h2 + .row .col-md-4 {
     width: 100%;
     max-width: 100%;
   }
