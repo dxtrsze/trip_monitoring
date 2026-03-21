@@ -5370,6 +5370,60 @@ def export_missing_data():
         return f"Error exporting missing data: {str(e)}", 500
 
 
+@app.route('/driver_assistant_time_logs')
+@login_required
+def driver_assistant_time_logs():
+    """Get driver/assistant time log matrix data"""
+    if current_user.position != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('view_schedule'))
+
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    if not start_date_str or not end_date_str:
+        return jsonify({'error': 'Start date and end date are required'}), 400
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+
+    # Validate date range
+    if start_date > end_date:
+        return jsonify({'error': 'Start date must be before or equal to end date'}), 400
+
+    delta = end_date - start_date
+    if delta.days > 90:
+        return jsonify({'error': 'Date range cannot exceed 90 days'}), 400
+
+    # Include the entire end date by adding 1 day
+    # This makes the range inclusive: if user selects Mar 15-20, we query through Mar 20 23:59:59
+    end_date = end_date + timedelta(days=1)
+
+    try:
+        # Get matrix data using shared helper
+        personnel_list, date_list = get_time_log_matrix_data(start_date, end_date)
+
+        # Build response
+        result = {
+            'personnel': personnel_list,
+            'date_range': {
+                'start': start_date_str,
+                'end': end_date_str,
+                'dates': date_list
+            }
+        }
+
+        return jsonify(result)
+
+    except ValueError as e:
+        return jsonify({'error': f'Invalid date format: {str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'error': f'Error fetching time log data: {str(e)}'}), 500
+
+
 def get_time_log_matrix_data(start_date, end_date):
     """
     Query and pivot time log data for matrix display.
