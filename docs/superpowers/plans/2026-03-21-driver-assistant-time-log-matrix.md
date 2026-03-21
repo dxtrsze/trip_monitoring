@@ -58,7 +58,7 @@ def get_time_log_matrix_data(start_date, end_date):
 Run: `python -c "import app; print('Helper function defined')"`
 Expected: No syntax errors
 
-- [ ] **Step 3: Implement Step 1 - Query assigned personnel**
+- [ ] **Step 2: Implement query for assigned personnel**
 
 Add to function body:
 
@@ -119,7 +119,7 @@ def get_time_log_matrix_data(start_date, end_date):
 Run: `python -c "import app; print('Query compiles')"`
 Expected: No syntax errors
 
-- [ ] **Step 4: Implement Step 2 - Query TimeLog records**
+- [ ] **Step 3: Implement query for TimeLog records**
 
 Add after the personnel query:
 
@@ -134,7 +134,7 @@ Add after the personnel query:
 Run: `python -c "import app; print('TimeLog query compiles')"`
 Expected: No syntax errors
 
-- [ ] **Step 5: Implement Step 3 - Build TimeLog lookup dictionary**
+- [ ] **Step 4: Implement TimeLog lookup dictionary**
 
 Add after the TimeLog query:
 
@@ -156,7 +156,7 @@ Add after the TimeLog query:
 Run: `python -c "import app; print('Lookup dict compiles')"`
 Expected: No syntax errors
 
-- [ ] **Step 6: Implement Step 4 - Generate date list**
+- [ ] **Step 5: Generate date list**
 
 Add after the lookup dictionary:
 
@@ -172,7 +172,7 @@ Add after the lookup dictionary:
 Run: `python -c "import app; print('Date list generation compiles')"`
 Expected: No syntax errors
 
-- [ ] **Step 7: Implement Step 5 - Build unique personnel set and pivot data**
+- [ ] **Step 6: Build unique personnel set and pivot data**
 
 Replace the `return [], []` with full implementation:
 
