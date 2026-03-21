@@ -1119,6 +1119,14 @@ document.addEventListener('DOMContentLoaded', function() {
     window.location.href = `/export_missing_data?start_date=${startDate}&end_date=${endDate}`;
   });
 
+  // Export Time Log Matrix
+  exportTimeLogBtn.addEventListener('click', function() {
+    const startDate = document.getElementById('timeLogStartDate').value;
+    const endDate = document.getElementById('timeLogEndDate').value;
+
+    window.location.href = `/export_driver_assistant_time_logs?start_date=${startDate}&end_date=${endDate}`;
+  });
+
   function displayScheduledTripsReport(data) {
     reportTableBody.innerHTML = '';
 
