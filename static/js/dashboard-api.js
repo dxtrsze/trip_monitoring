@@ -33,11 +33,12 @@ const DashboardAPI = {
   },
 
   // Fetch comparison data
-  async fetchComparisons(startDate = null, endDate = null) {
+  async fetchComparisons(startDate = null, endDate = null, today = false) {
     let url = '/api/dashboard/comparisons';
     const params = new URLSearchParams();
     if (startDate) params.append('start_date', startDate);
     if (endDate) params.append('end_date', endDate);
+    if (today) params.append('today', 'true');
     if (params.toString()) url += '?' + params.toString();
 
     const response = await fetch(url);

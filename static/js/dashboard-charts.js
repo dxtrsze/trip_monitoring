@@ -345,6 +345,8 @@ const DashboardCharts = (function() {
     const people = data.map(d => d.name);
     const trips = data.map(d => d.trips);
     const roles = data.map(d => d.role);
+    const dropCompletion = data.map(d => d.drop_completion_rate);
+    const odoCompliance = data.map(d => d.odo_compliance_rate);
 
     const option = {
       title: { text: '' },
@@ -352,8 +354,23 @@ const DashboardCharts = (function() {
         trigger: 'axis',
         formatter: function(params) {
           const p = params[0];
-          const role = roles[params.dataIndex];
-          return `${p.name}<br/>Role: <strong>${role}</strong><br/>Trips: <strong>${p.value}</strong>`;
+          const idx = params.dataIndex;
+          const role = roles[idx];
+          const dropRate = dropCompletion[idx];
+          const odoRate = odoCompliance[idx];
+          const completedDrops = data[idx].completed_drops;
+          const totalDrops = data[idx].total_drops;
+          const compliantDays = data[idx].compliant_days;
+          const totalDays = data[idx].total_active_days;
+
+          return `
+            <strong>${p.name}</strong><br/>
+            Role: ${role}<br/>
+            <hr style="margin: 5px 0"/>
+            🚚 Trips: <strong>${p.value}</strong><br/>
+            📍 Drop Completion: <strong>${dropRate}%</strong> (${completedDrops}/${totalDrops} drops)<br/>
+            ⛽ ODO Compliance: <strong>${odoRate}%</strong> (${compliantDays}/${totalDays} days)
+          `;
         }
       },
       xAxis: {
@@ -370,13 +387,33 @@ const DashboardCharts = (function() {
         data: trips,
         itemStyle: {
           color: function(params) {
-            return roles[params.dataIndex] === 'driver' ? '#3b82f6' : '#8b5cf6';
+            // Color based on role and overall performance
+            const role = roles[params.dataIndex];
+            const dropRate = dropCompletion[params.dataIndex];
+            const odoRate = odoCompliance[params.dataIndex];
+
+            // Base color by role
+            const baseColor = role === 'driver' ? [59, 130, 246] : [139, 92, 246]; // RGB
+
+            // Darken color if performance is poor
+            const avgPerformance = (dropRate + odoRate) / 2;
+            if (avgPerformance >= 80) {
+              return `rgb(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]})`;
+            } else if (avgPerformance >= 60) {
+              return `rgba(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]}, 0.7)`;
+            } else {
+              return `rgba(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]}, 0.4)`;
+            }
           }
         },
         label: {
           show: true,
           position: 'top',
-          formatter: '{c}'
+          formatter: function(params) {
+            const idx = params.dataIndex;
+            const dropRate = dropCompletion[idx];
+            return `${params.value} (${dropRate}%)`;
+          }
         }
       }],
       grid: { left: 60, right: 20, top: 20, bottom: 80 }

@@ -1,173 +1,183 @@
-{% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
-
-{% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-{% endblock %}
-
-{% block content %}
-<!-- Action Bar -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
-  <div class="container-fluid">
-    <span class="navbar-brand mb-0 h1">
-      <i class="bi bi-speedometer2"></i> Trip Monitoring Dashboard
-    </span>
-
-    <!-- Quick Action Buttons -->
-    <div class="navbar-nav ms-auto mb-2 mb-lg-0">
-      <a class="nav-link btn btn-outline-light me-2" href="{{ url_for('add_schedule') }}">
-        <i class="bi bi-plus-circle"></i> Schedule Trip
-      </a>
-      <a class="nav-link btn btn-outline-light me-2" href="{{ url_for('view_schedule') }}">
-        <i class="bi bi-calendar-check"></i> View Schedule
-      </a>
-      <a class="nav-link btn btn-outline-light me-2" href="{{ url_for('upload_data') }}">
-        <i class="bi bi-upload"></i> Upload Data
-      </a>
-      <a class="nav-link btn btn-outline-light me-2" href="{{ url_for('odo_logs') }}">
-        <i class="bi bi-fuel-pump"></i> Add ODO
-      </a>
-      <a class="nav-link btn btn-outline-light me-2" href="{{ url_for('reports') }}">
-        <i class="bi bi-graph-up"></i> Reports
-      </a>
-      <a class="nav-link btn btn-outline-light me-2" href="{{ url_for('manage_vehicles') }}">
-        <i class="bi bi-truck"></i> Vehicles
-      </a>
+{% extends "base.html" %} {% block title %}Dashboard{% endblock %} {% block
+styles %}
+<link
+    rel="stylesheet"
+    href="{{ url_for('static', filename='css/dashboard.css') }}"
+/>
+{% endblock %} {% block content %}
+<!-- Refresh Button -->
+<div class="container-fluid mt-3 mb-3">
+    <div class="d-flex justify-content-end align-items-center">
+        <button id="refreshBtn" class="btn btn-primary btn-sm">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+        <small id="lastUpdated" class="ms-3">Loading...</small>
     </div>
-
-    <!-- User Info & Refresh -->
-    <div class="d-flex align-items-center text-white ms-3">
-      <span class="me-3">
-        <i class="bi bi-person-circle"></i> {{ current_user.name }}
-      </span>
-      <button id="refreshBtn" class="btn btn-light btn-sm">
-        <i class="bi bi-arrow-clockwise"></i> Refresh
-      </button>
-      <small id="lastUpdated" class="ms-3">Loading...</small>
-    </div>
-  </div>
-</nav>
+</div>
 
 <!-- Error Banner (hidden by default) -->
-<div id="errorBanner" class="alert alert-danger alert-dismissible fade show" role="alert" style="display:none;">
-  <span id="errorMessage"></span>
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<div
+    id="errorBanner"
+    class="alert alert-danger alert-dismissible fade show"
+    role="alert"
+    style="display: none"
+>
+    <span id="errorMessage"></span>
+    <button
+        type="button"
+        class="btn-close"
+        data-bs-dismiss="alert"
+        aria-label="Close"
+    ></button>
 </div>
 
 <!-- KPI Cards Container -->
 <div id="kpiContainer" class="container-fluid mt-4">
-  <h2 class="mb-4">Key Performance Indicators</h2>
-  <div class="row" id="kpiCards">
-    <!-- KPI cards will be dynamically inserted here -->
-  </div>
+    <h2 class="mb-4">Key Performance Indicators</h2>
+    <div class="row" id="kpiCards">
+        <!-- KPI cards will be dynamically inserted here -->
+    </div>
 </div>
 
 <!-- Charts Container -->
 <div class="container-fluid mt-5">
-  <h2 class="mb-4">Trends & Comparisons</h2>
-  <div class="row">
-    <!-- Trend Charts Column -->
-    <div class="col-lg-7">
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5><i class="bi bi-graph-up"></i> Daily Delivery Counts</h5>
-        </div>
-        <div class="card-body">
-          <div id="deliveryCountsChart" style="height: 300px;"></div>
-        </div>
-      </div>
+    <h2 class="mb-4">Trends & Comparisons</h2>
+    <div class="row">
+        <!-- Trend Charts Column -->
+        <div class="col-lg-7">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>
+                        <i class="bi bi-graph-up"></i> Daily Delivery Counts
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="deliveryCountsChart" style="height: 300px"></div>
+                </div>
+            </div>
 
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5><i class="bi bi-fuel-pump"></i> Fuel Efficiency & Cost</h5>
-        </div>
-        <div class="card-body">
-          <div id="fuelEfficiencyChart" style="height: 300px;"></div>
-        </div>
-      </div>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>
+                        <i class="bi bi-fuel-pump"></i> Fuel Efficiency & Cost
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="fuelEfficiencyChart" style="height: 300px"></div>
+                </div>
+            </div>
 
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5><i class="bi bi-truck"></i> Truck Utilization</h5>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="bi bi-truck"></i> Truck Utilization</h5>
+                </div>
+                <div class="card-body">
+                    <div id="truckUtilizationChart" style="height: 300px"></div>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-          <div id="truckUtilizationChart" style="height: 300px;"></div>
+
+        <!-- Comparison Charts Column -->
+        <div class="col-lg-5">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>
+                        <i class="bi bi-bar-chart"></i> Today's Vehicle
+                        Utilization
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div
+                        id="vehicleUtilizationChart"
+                        style="height: 350px"
+                    ></div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>
+                        <i class="bi bi-geo-alt"></i> Branch Delivery Frequency
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="branchFrequencyChart" style="height: 350px"></div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>
+                        <i class="bi bi-people"></i> Driver/Assistant
+                        Performance
+                    </h5>
+                    <small class="text-muted">
+                        Sorted by trip count. Hover bars to see drop completion & ODO compliance rates.
+                    </small>
+                </div>
+                <div class="card-body">
+                    <div
+                        id="driverPerformanceChart"
+                        style="height: 350px"
+                    ></div>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-
-    <!-- Comparison Charts Column -->
-    <div class="col-lg-5">
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5><i class="bi bi-bar-chart"></i> Vehicle Utilization Ranking</h5>
-        </div>
-        <div class="card-body">
-          <div id="vehicleUtilizationChart" style="height: 350px;"></div>
-        </div>
-      </div>
-
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5><i class="bi bi-geo-alt"></i> Branch Delivery Frequency</h5>
-        </div>
-        <div class="card-body">
-          <div id="branchFrequencyChart" style="height: 350px;"></div>
-        </div>
-      </div>
-
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5><i class="bi bi-people"></i> Driver/Assistant Performance</h5>
-        </div>
-        <div class="card-body">
-          <div id="driverPerformanceChart" style="height: 350px;"></div>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- Performance Gauges -->
 <div class="container-fluid mt-5">
-  <h2 class="mb-4">Performance Metrics</h2>
-  <div class="row">
-    <div class="col-md-4">
-      <div class="card">
-        <div class="card-header">
-          <h5>On-Time Delivery Rate</h5>
+    <h2 class="mb-4">Performance Metrics</h2>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>On-Time Delivery Rate</h5>
+                </div>
+                <div class="card-body">
+                    <div id="onTimeGauge" style="height: 250px"></div>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-          <div id="onTimeGauge" style="height: 250px;"></div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Truck Utilization</h5>
+                </div>
+                <div class="card-body">
+                    <div id="utilizationGauge" style="height: 250px"></div>
+                </div>
+            </div>
         </div>
-      </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Data Completeness</h5>
+                </div>
+                <div class="card-body">
+                    <div id="completenessGauge" style="height: 250px"></div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="col-md-4">
-      <div class="card">
-        <div class="card-header">
-          <h5>Truck Utilization</h5>
-        </div>
-        <div class="card-body">
-          <div id="utilizationGauge" style="height: 250px;"></div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="card">
-        <div class="card-header">
-          <h5>Data Completeness</h5>
-        </div>
-        <div class="card-body">
-          <div id="completenessGauge" style="height: 250px;"></div>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- Load dashboard JavaScript modules -->
-<script src="{{ url_for('static', filename='js/dashboard-utils.js') }}" defer></script>
-<script src="{{ url_for('static', filename='js/dashboard-api.js') }}" defer></script>
-<script src="{{ url_for('static', filename='js/dashboard-charts.js') }}" defer></script>
-<script src="{{ url_for('static', filename='js/dashboard-main.js') }}" defer></script>
+<script
+    src="{{ url_for('static', filename='js/dashboard-utils.js') }}"
+    defer
+></script>
+<script
+    src="{{ url_for('static', filename='js/dashboard-api.js') }}"
+    defer
+></script>
+<script
+    src="{{ url_for('static', filename='js/dashboard-charts.js') }}"
+    defer
+></script>
+<script
+    src="{{ url_for('static', filename='js/dashboard-main.js') }}"
+    defer
+></script>
 {% endblock %}

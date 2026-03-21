@@ -13,12 +13,15 @@
       // Fetch all data in parallel
       const data = await DashboardAPI.fetchAll();
 
+      // Fetch today's vehicle utilization separately (backend uses Manila time)
+      const todayComparisons = await DashboardAPI.fetchComparisons(null, null, true);
+
       // Render all components
       DashboardCharts.renderKPIs(data.kpis);
       DashboardCharts.initDeliveryCountsChart(data.trends.daily_deliveries);
       DashboardCharts.initFuelEfficiencyChart(data.trends.fuel_efficiency);
       DashboardCharts.initTruckUtilizationChart(data.trends.truck_utilization);
-      DashboardCharts.initVehicleUtilizationChart(data.comparisons.vehicle_utilization);
+      DashboardCharts.initVehicleUtilizationChart(todayComparisons.vehicle_utilization);
       DashboardCharts.initBranchFrequencyChart(data.comparisons.branch_frequency);
       DashboardCharts.initDriverPerformanceChart(data.comparisons.driver_performance);
       DashboardCharts.initGauges(data.gauges);
@@ -48,8 +51,27 @@
       // Destroy existing charts
       DashboardCharts.destroyCharts();
 
-      // Re-fetch and render
-      await initDashboard();
+      // Re-fetch and render with today's vehicle utilization
+      const data = await DashboardAPI.fetchAll();
+
+      // Fetch today's vehicle utilization separately (backend uses Manila time)
+      const todayComparisons = await DashboardAPI.fetchComparisons(null, null, true);
+
+      // Render all components
+      DashboardCharts.renderKPIs(data.kpis);
+      DashboardCharts.initDeliveryCountsChart(data.trends.daily_deliveries);
+      DashboardCharts.initFuelEfficiencyChart(data.trends.fuel_efficiency);
+      DashboardCharts.initTruckUtilizationChart(data.trends.truck_utilization);
+      DashboardCharts.initVehicleUtilizationChart(todayComparisons.vehicle_utilization);
+      DashboardCharts.initBranchFrequencyChart(data.comparisons.branch_frequency);
+      DashboardCharts.initDriverPerformanceChart(data.comparisons.driver_performance);
+      DashboardCharts.initGauges(data.gauges);
+
+      // Update timestamp
+      lastUpdateTime = new Date();
+      updateTimestampDisplay();
+
+      hideLoading();
 
     } finally {
       if (refreshBtn) {

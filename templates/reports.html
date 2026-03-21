@@ -199,6 +199,36 @@
       </div>
     </div>
   </div>
+
+  <!-- Missing Data Card -->
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Missing Data Report</h5>
+      </div>
+      <div class="card-body">
+        <form id="missingDataForm">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="missingStartDate" class="form-label">Start Date</label>
+              <input type="date" class="form-control" id="missingStartDate" required>
+            </div>
+            <div class="col-md-6">
+              <label for="missingEndDate" class="form-label">End Date</label>
+              <input type="date" class="form-control" id="missingEndDate" required>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <button type="submit" class="btn btn-dark w-100 text-white">
+                <i class="bi bi-search"></i> View Missing Data
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Scheduled Report Results -->
@@ -422,6 +452,73 @@
   </div>
 </div>
 
+<!-- Missing Data Results -->
+<div class="card mt-4" id="missingResults" style="display:none;">
+  <div class="card-header d-flex justify-content-between align-items-center bg-dark text-white">
+    <h5><i class="bi bi-exclamation-triangle"></i> Missing Data Report</h5>
+    <div>
+      <span id="missingDateRange" class="me-3"></span>
+      <button type="button" class="btn btn-sm btn-light" id="exportMissingBtn">
+        <i class="bi bi-download"></i> Export CSV
+      </button>
+    </div>
+  </div>
+  <div class="card-body">
+    <!-- Missing Trip Details Section -->
+    <div class="card mb-3 border-warning">
+      <div class="card-header py-2 bg-warning text-dark">
+        <h6 class="mb-0"><i class="bi bi-exclamation-circle"></i> Trips with Missing Arrive/Departure Data</h6>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-striped table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>Date</th>
+                <th>Plate Number</th>
+                <th>Driver(s)</th>
+                <th>Assistant(s)</th>
+                <th>Trip #</th>
+                <th>Branch</th>
+                <th>Arrive Time</th>
+                <th>Departure Time</th>
+              </tr>
+            </thead>
+            <tbody id="missingTripsBody">
+              <!-- Missing trips data will be dynamically inserted here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- Missing ODO Records Section -->
+    <div class="card border-danger">
+      <div class="card-header py-2 bg-danger text-white">
+        <h6 class="mb-0"><i class="bi bi-x-circle"></i> Vehicles with No ODO Records</h6>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-striped table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>Date</th>
+                <th>Plate Number</th>
+                <th>Department</th>
+                <th>Has Start ODO</th>
+                <th>Has Refill ODO</th>
+                <th>Has End ODO</th>
+              </tr>
+            </thead>
+            <tbody id="missingOdoBody">
+              <!-- Missing ODO data will be dynamically inserted here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   // Scheduled Report Form
@@ -470,25 +567,60 @@ document.addEventListener('DOMContentLoaded', function() {
   const exportDifotBtn = document.getElementById('exportDifotBtn');
   const difotDateRange = document.getElementById('difotDateRange');
 
-  // Set default date range to last 7 days
-  const today = new Date();
-  const sevenDaysAgo = new Date(today);
-  sevenDaysAgo.setDate(today.getDate() - 7);
-  const defaultStart = sevenDaysAgo.toISOString().split('T')[0];
-  const defaultEnd = today.toISOString().split('T')[0];
+  // Missing Data Form
+  const missingDataForm = document.getElementById('missingDataForm');
+  const missingResults = document.getElementById('missingResults');
+  const missingTripsBody = document.getElementById('missingTripsBody');
+  const missingOdoBody = document.getElementById('missingOdoBody');
+  const exportMissingBtn = document.getElementById('exportMissingBtn');
+  const missingDateRange = document.getElementById('missingDateRange');
 
-  document.getElementById('scheduledStartDate').value = defaultStart;
-  document.getElementById('scheduledEndDate').value = defaultEnd;
-  document.getElementById('truckStartDate').value = defaultStart;
-  document.getElementById('truckEndDate').value = defaultEnd;
-  document.getElementById('fleetStartDate').value = defaultStart;
-  document.getElementById('fleetEndDate').value = defaultEnd;
-  document.getElementById('fuelStartDate').value = defaultStart;
-  document.getElementById('fuelEndDate').value = defaultEnd;
-  document.getElementById('frequencyStartDate').value = defaultStart;
-  document.getElementById('frequencyEndDate').value = defaultEnd;
-  document.getElementById('difotStartDate').value = defaultStart;
-  document.getElementById('difotEndDate').value = defaultEnd;
+  // Load Manila date and set default date range to last 7 days
+  fetch('/api/manila_date')
+    .then(response => response.json())
+    .then(data => {
+      const defaultStart = data.seven_days_ago;
+      const defaultEnd = data.today;
+
+      document.getElementById('scheduledStartDate').value = defaultStart;
+      document.getElementById('scheduledEndDate').value = defaultEnd;
+      document.getElementById('truckStartDate').value = defaultStart;
+      document.getElementById('truckEndDate').value = defaultEnd;
+      document.getElementById('fleetStartDate').value = defaultStart;
+      document.getElementById('fleetEndDate').value = defaultEnd;
+      document.getElementById('fuelStartDate').value = defaultStart;
+      document.getElementById('fuelEndDate').value = defaultEnd;
+      document.getElementById('frequencyStartDate').value = defaultStart;
+      document.getElementById('frequencyEndDate').value = defaultEnd;
+      document.getElementById('difotStartDate').value = defaultStart;
+      document.getElementById('difotEndDate').value = defaultEnd;
+      document.getElementById('missingStartDate').value = defaultStart;
+      document.getElementById('missingEndDate').value = defaultEnd;
+    })
+    .catch(error => {
+      console.error('Error loading Manila date:', error);
+      // Fallback to browser local date if API fails
+      const today = new Date();
+      const sevenDaysAgo = new Date(today);
+      sevenDaysAgo.setDate(today.getDate() - 7);
+      const defaultStart = sevenDaysAgo.toISOString().split('T')[0];
+      const defaultEnd = today.toISOString().split('T')[0];
+
+      document.getElementById('scheduledStartDate').value = defaultStart;
+      document.getElementById('scheduledEndDate').value = defaultEnd;
+      document.getElementById('truckStartDate').value = defaultStart;
+      document.getElementById('truckEndDate').value = defaultEnd;
+      document.getElementById('fleetStartDate').value = defaultStart;
+      document.getElementById('fleetEndDate').value = defaultEnd;
+      document.getElementById('fuelStartDate').value = defaultStart;
+      document.getElementById('fuelEndDate').value = defaultEnd;
+      document.getElementById('frequencyStartDate').value = defaultStart;
+      document.getElementById('frequencyEndDate').value = defaultEnd;
+      document.getElementById('difotStartDate').value = defaultStart;
+      document.getElementById('difotEndDate').value = defaultEnd;
+      document.getElementById('missingStartDate').value = defaultStart;
+      document.getElementById('missingEndDate').value = defaultEnd;
+    });
 
   // Load vehicles for fuel efficiency filter
   fetch('/api/vehicles')
@@ -739,6 +871,47 @@ document.addEventListener('DOMContentLoaded', function() {
         fleetResults.style.display = 'none';
         fuelResults.style.display = 'none';
         frequencyResults.style.display = 'none';
+        missingResults.style.display = 'none';
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Error: ' + error.message);
+      });
+  });
+
+  // Missing Data Form Submit
+  missingDataForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const startDate = document.getElementById('missingStartDate').value;
+    const endDate = document.getElementById('missingEndDate').value;
+
+    // Show date range in the report header
+    const start = new Date(startDate).toLocaleDateString();
+    const end = new Date(endDate).toLocaleDateString();
+    missingDateRange.textContent = `${start} - ${end}`;
+
+    // Fetch missing data
+    fetch(`/missing_data_report?start_date=${startDate}&end_date=${endDate}`)
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(err => {
+            throw new Error(err.error || 'Failed to fetch missing data');
+          });
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        displayMissingData(data);
+        reportResults.style.display = 'none';
+        truckResults.style.display = 'none';
+        fleetResults.style.display = 'none';
+        fuelResults.style.display = 'none';
+        frequencyResults.style.display = 'none';
+        difotResults.style.display = 'none';
       })
       .catch(error => {
         console.error('Error:', error);
@@ -798,6 +971,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const endDate = document.getElementById('difotEndDate').value;
 
     window.location.href = `/export_difot?start_date=${startDate}&end_date=${endDate}`;
+  });
+
+  // Export Missing Data
+  exportMissingBtn.addEventListener('click', function() {
+    const startDate = document.getElementById('missingStartDate').value;
+    const endDate = document.getElementById('missingEndDate').value;
+
+    window.location.href = `/export_missing_data?start_date=${startDate}&end_date=${endDate}`;
   });
 
   function displayScheduledTripsReport(data) {
@@ -908,32 +1089,46 @@ document.addEventListener('DOMContentLoaded', function() {
       fuelTableBody.innerHTML = '<tr><td colspan="8" class="text-center">No ODO records found for the selected criteria</td></tr>';
       fuelSummaryBody.innerHTML = '<tr><td colspan="6" class="text-center">No summary data available</td></tr>';
     } else {
-      // Calculate summary by plate number
+      // Calculate summary by plate number (PER DAY calculation)
       const summary = {};
       data.forEach(row => {
         const plate = row.plate_number;
+
+        // Extract date from datetime (YYYY-MM-DD format)
+        const odoDate = row.datetime.split(' ')[0];
+
         if (!summary[plate]) {
           summary[plate] = {
             plate_number: plate,
-            start_odo: null,
-            end_odo: null,
+            total_km: 0,
             total_litters: 0,
-            total_amount: 0
+            total_amount: 0,
+            daily_distances: {}  // Store per-day calculations
+          };
+        }
+
+        // Initialize this day if not exists
+        if (!summary[plate].daily_distances[odoDate]) {
+          summary[plate].daily_distances[odoDate] = {
+            start_odo: null,
+            end_odo: null
           };
         }
 
         const odoReading = parseFloat(row.odometer_reading || 0);
 
+        // Store start/end odo for this specific day
         if (row.status === 'start odo') {
-          if (summary[plate].start_odo === null || odoReading < summary[plate].start_odo) {
-            summary[plate].start_odo = odoReading;
+          if (summary[plate].daily_distances[odoDate].start_odo === null || odoReading < summary[plate].daily_distances[odoDate].start_odo) {
+            summary[plate].daily_distances[odoDate].start_odo = odoReading;
           }
         } else if (row.status === 'end odo') {
-          if (summary[plate].end_odo === null || odoReading > summary[plate].end_odo) {
-            summary[plate].end_odo = odoReading;
+          if (summary[plate].daily_distances[odoDate].end_odo === null || odoReading > summary[plate].daily_distances[odoDate].end_odo) {
+            summary[plate].daily_distances[odoDate].end_odo = odoReading;
           }
         }
 
+        // Track fuel data (not per-day)
         if (row.litters) {
           summary[plate].total_litters += parseFloat(row.litters);
         }
@@ -942,29 +1137,47 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
 
+      // Calculate total KM as sum of daily distances
+      Object.keys(summary).forEach(plate => {
+        let totalKm = 0;
+        const dailyDistances = summary[plate].daily_distances;
+
+        // Sum up distance for each day
+        Object.values(dailyDistances).forEach(dayData => {
+          const dayKm = (dayData.start_odo !== null && dayData.end_odo !== null)
+            ? (dayData.end_odo - dayData.start_odo)
+            : 0;  // Missing start or end odo = 0 km for that day
+          totalKm += dayKm;
+        });
+
+        summary[plate].total_km = totalKm;
+        // Clean up daily_distances to save memory
+        delete summary[plate].daily_distances;
+      });
+
       // Display summary
       Object.values(summary).forEach(summaryRow => {
         const tr = document.createElement('tr');
 
-        const totalKm = (summaryRow.end_odo !== null && summaryRow.start_odo !== null)
-          ? (summaryRow.end_odo - summaryRow.start_odo).toFixed(1)
-          : 'N/A';
+        const totalKm = summaryRow.total_km > 0
+          ? summaryRow.total_km.toFixed(1)
+          : '0.0';
 
         const avgPricePerLiter = summaryRow.total_litters > 0
           ? (summaryRow.total_amount / summaryRow.total_litters).toFixed(2)
-          : 'N/A';
+          : '0.00';
 
-        const kmPerLiter = (summaryRow.total_litters > 0 && totalKm !== 'N/A')
-          ? (parseFloat(totalKm) / summaryRow.total_litters).toFixed(2)
-          : 'N/A';
+        const kmPerLiter = (summaryRow.total_litters > 0 && summaryRow.total_km > 0)
+          ? (summaryRow.total_km / summaryRow.total_litters).toFixed(2)
+          : '0.00';
 
         tr.innerHTML = `
           <td><strong>${summaryRow.plate_number}</strong></td>
           <td><span class="badge bg-primary fs-6">${totalKm}</span></td>
-          <td><span class="badge bg-success fs-6">${kmPerLiter !== 'N/A' ? kmPerLiter : 'N/A'}</span></td>
+          <td><span class="badge bg-success fs-6">${kmPerLiter}</span></td>
           <td>${summaryRow.total_litters.toFixed(2)}</td>
           <td>₱${summaryRow.total_amount.toFixed(2)}</td>
-          <td>${avgPricePerLiter !== 'N/A' ? '₱' + avgPricePerLiter : 'N/A'}</td>
+          <td>₱${avgPricePerLiter}</td>
         `;
         fuelSummaryBody.appendChild(tr);
       });
@@ -973,9 +1186,18 @@ document.addEventListener('DOMContentLoaded', function() {
       data.forEach(row => {
         const tr = document.createElement('tr');
 
-        // Format the datetime
-        const datetime = new Date(row.datetime);
-        const formattedDateTime = datetime.toLocaleString();
+        // Format the datetime in Manila timezone
+        const datetime = new Date(row.datetime + 'Z'); // Assume UTC from server
+        const formattedDateTime = datetime.toLocaleString('en-PH', {
+          timeZone: 'Asia/Manila',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        });
 
         // Format numbers
         const odoReading = parseFloat(row.odometer_reading || 0).toFixed(1);
@@ -1086,6 +1308,63 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     difotResults.style.display = 'block';
+  }
+
+  function displayMissingData(data) {
+    missingTripsBody.innerHTML = '';
+    missingOdoBody.innerHTML = '';
+
+    // Display missing trips data
+    if (!data.missing_trips || data.missing_trips.length === 0) {
+      missingTripsBody.innerHTML = '<tr><td colspan="8" class="text-center text-success"><i class="bi bi-check-circle"></i> All trips have complete arrive/departure data</td></tr>';
+    } else {
+      data.missing_trips.forEach(row => {
+        const tr = document.createElement('tr');
+
+        tr.innerHTML = `
+          <td>${row.delivery_schedule}</td>
+          <td><strong>${row.plate_number}</strong></td>
+          <td>${row.drivers || 'N/A'}</td>
+          <td>${row.assistants || 'N/A'}</td>
+          <td><span class="badge bg-primary">Trip ${row.trip_number}</span></td>
+          <td>${row.branch_name}</td>
+          <td><span class="badge bg-warning text-dark">${row.arrive || 'Missing'}</span></td>
+          <td><span class="badge bg-warning text-dark">${row.departure || 'Missing'}</span></td>
+        `;
+        missingTripsBody.appendChild(tr);
+      });
+    }
+
+    // Display missing ODO data
+    if (!data.missing_odo || data.missing_odo.length === 0) {
+      missingOdoBody.innerHTML = '<tr><td colspan="6" class="text-center text-success"><i class="bi bi-check-circle"></i> All vehicles have ODO records</td></tr>';
+    } else {
+      data.missing_odo.forEach(row => {
+        const tr = document.createElement('tr');
+
+        const hasStartOdo = row.has_start_odo ?
+          '<span class="badge bg-success">Yes</span>' :
+          '<span class="badge bg-danger">No</span>';
+        const hasRefillOdo = row.has_refill_odo ?
+          '<span class="badge bg-success">Yes</span>' :
+          '<span class="badge bg-danger">No</span>';
+        const hasEndOdo = row.has_end_odo ?
+          '<span class="badge bg-success">Yes</span>' :
+          '<span class="badge bg-danger">No</span>';
+
+        tr.innerHTML = `
+          <td>${row.delivery_schedule}</td>
+          <td><strong>${row.plate_number}</strong></td>
+          <td>${row.department || 'N/A'}</td>
+          <td>${hasStartOdo}</td>
+          <td>${hasRefillOdo}</td>
+          <td>${hasEndOdo}</td>
+        `;
+        missingOdoBody.appendChild(tr);
+      });
+    }
+
+    missingResults.style.display = 'block';
   }
 });
 </script>
