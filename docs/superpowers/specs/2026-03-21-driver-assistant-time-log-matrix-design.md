@@ -1,7 +1,7 @@
 # Driver/Assistant Time Log Matrix Report Design
 
 **Date:** 2026-03-21
-**Status:** Approved
+**Status:** Approved (Revised after review)
 **Author:** Claude (Sonnet 4.6)
 
 ## Overview
@@ -15,6 +15,8 @@ Currently, TimeLog data for drivers and assistants is shown in the "Missing Data
 - Identify patterns in attendance (missing days, incomplete clock-outs)
 - See which drivers/assistants have complete vs incomplete time logs
 - Compare time logs across all assigned personnel for a date range
+
+**Scope Clarification:** This report shows ONLY drivers and assistants who were assigned to trips within the selected date range. Personnel who were not assigned to any trips (even if they have TimeLog entries) will not appear. This aligns with the operational nature of the system - we're reporting on trip-related activity, not all personnel time logs.
 
 ## Database Structure
 
@@ -57,7 +59,30 @@ Trip → trip_driver/trip_assistant → Manpower → User → TimeLog
 **Query Parameters:**
 - `start_date` (required): Start date in YYYY-MM-DD format
 - `end_date` (required): End date in YYYY-MM-DD format
-- Maximum date range: 90 days (consistent with other reports)
+- Maximum date range: 90 days
+
+**Validation:**
+```python
+from datetime import datetime, timedelta
+
+# Parse and validate dates
+try:
+    start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+    end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+except ValueError:
+    return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+
+# Validate date range
+if start_date > end_date:
+    return jsonify({'error': 'Start date must be before or equal to end date'}), 400
+
+delta = end_date - start_date
+if delta.days > 90:
+    return jsonify({'error': 'Date range cannot exceed 90 days'}), 400
+
+# Include the entire end date
+end_date = end_date + timedelta(days=1)
+```
 
 **Response Structure:**
 
@@ -133,7 +158,7 @@ manpower_assignments = db.session.query(
 .filter(
     Schedule.delivery_schedule >= start_date,
     Schedule.delivery_schedule < end_date
-).union_all(
+).union(
     db.session.query(
         Schedule.delivery_schedule,
         Manpower.id,
@@ -147,11 +172,13 @@ manpower_assignments = db.session.query(
         Schedule.delivery_schedule >= start_date,
         Schedule.delivery_schedule < end_date
     )
-).distinct().all()
+).order_by(Manpower.name, Manpower.role).all()
 ```
 
 **Key points:**
-- Use `distinct()` to avoid duplicate entries
+- Use `union()` instead of `union_all()` to eliminate duplicate personnel entries
+- Add `order_by(Manpower.name, Manpower.role)` for consistent, deterministic results
+- Sort by name first, then role to group same-name personnel by role
 - Capture `user_id` (nullable) for TimeLog lookup
 - Include all dates the person was assigned to work
 
@@ -167,6 +194,8 @@ time_logs = db.session.query(TimeLog).filter(
     cast(TimeLog.time_in, Date) < end_date
 ).all()
 ```
+
+**Night Shift Limitation:** TimeLog entries are matched to dates using `time_in` date only. If someone works a night shift (e.g., 11:00 PM to 7:00 AM next day), the TimeLog will only appear on the `time_in` date. This is a known limitation that could be addressed in a future enhancement by showing the entry on both days or using a different matching strategy.
 
 ### Step 3: Build Lookup Dictionaries
 
@@ -242,10 +271,17 @@ for person in unique_personnel:
 **Location:** Add as 7th card in the reports page grid (after Missing Data Report)
 
 **Card Configuration:**
-- Background color: Purple (`bg-primary` or custom `bg-secondary` with purple tint)
-- Icon: `<i class="bi bi-clock-history"></i>` or `<i class="bi bi-people"></i>`
+- Background color: `bg-info` (light blue, distinct from other cards)
+  - Note: `bg-primary` is used by "Scheduled Tripping Reports", `bg-dark` by "Missing Data Report"
+- Icon: `<i class="bi bi-clock-history"></i>`
 - Title: "Driver/Assistant Time Logs"
-- Position: In the second row of cards (row 2, column 1)
+- Grid position: Will be the 7th card in the grid layout (row 3, column 1 if maintaining 3-per-row layout)
+
+**Current card layout:**
+- Row 1: Scheduled Tripping (primary), Truck Load (success), Truck Utilization (info)
+- Row 2: Fuel Efficiency (warning), Frequency Rate (secondary), DIFOT (danger)
+- Row 2 (continued): Missing Data (dark)
+- Row 3: Driver/Assistant Time Logs (info) ← NEW
 
 **Form Elements:**
 - Start Date input (type="date")
@@ -321,6 +357,10 @@ function displayTimeLogMatrix(data) {
   const thead = document.querySelector('#timeLogMatrixTable thead tr');
   tbody.innerHTML = '';
 
+  // Display date range in header
+  document.getElementById('timeLogDateRange').textContent =
+    `${data.date_range.start} to ${data.date_range.end}`;
+
   // Build date columns
   data.date_range.dates.forEach(date => {
     const th = document.createElement('th');
@@ -386,13 +426,17 @@ function displayTimeLogMatrix(data) {
 
 When `personnel` array is empty:
 
-```html
-<tr>
-  <td colspan="2" class="text-center text-muted">
-    <i class="bi bi-info-circle"></i>
-    No drivers or assistants assigned to trips in this date range
-  </td>
-</tr>
+```javascript
+const tbody = document.getElementById('timeLogMatrixBody');
+const colspan = 2 + data.date_range.dates.length;  // Name + Role + date columns
+tbody.innerHTML = `
+  <tr>
+    <td colspan="${colspan}" class="text-center text-muted">
+      <i class="bi bi-info-circle"></i>
+      No drivers or assistants assigned to trips in this date range
+    </td>
+  </tr>
+`;
 ```
 
 ## CSV Export Design
@@ -434,6 +478,13 @@ Maria Santos,Assistant,Missing,Missing,08:00 AM,05:00 PM,08:00 AM,05:00 PM
 ### Backend Implementation
 
 ```python
+import csv
+import io
+from datetime import datetime, timedelta
+from flask import jsonify, request, redirect, url_for, flash, Response
+from flask_login import login_required, current_user
+from sqlalchemy import cast, Date
+
 @app.route('/export_driver_assistant_time_logs')
 @login_required
 def export_driver_assistant_time_logs():
@@ -528,6 +579,53 @@ def export_driver_assistant_time_logs():
 - Test with no data in date range
 - Test CSV export opens correctly in Excel/Google Sheets
 - Test responsive behavior on mobile devices
+
+### Code Reuse Strategy
+
+To avoid duplicating the complex data query and pivot logic between the main endpoint and the export endpoint, create a shared helper function:
+
+```python
+def get_time_log_matrix_data(start_date, end_date):
+    """
+    Query and pivot time log data for matrix display.
+
+    Args:
+        start_date: datetime.date object
+        end_date: datetime.date object
+
+    Returns:
+        tuple: (personnel_list, date_list)
+    """
+    # All the query and pivot logic from Steps 1-4
+    # Returns (personnel_list, date_list)
+
+@app.route('/driver_assistant_time_logs')
+@login_required
+def driver_assistant_time_logs():
+    # Validation...
+    personnel_list, date_list = get_time_log_matrix_data(start_date, end_date)
+    # Build response...
+    return jsonify(result)
+
+@app.route('/export_driver_assistant_time_logs')
+@login_required
+def export_driver_assistant_time_logs():
+    # Validation...
+    personnel_list, date_list = get_time_log_matrix_data(start_date, end_date)
+    # Generate CSV...
+    return Response(...)
+```
+
+### Security Considerations
+
+Both endpoints use GET requests (no state modification) and include:
+- **Authentication:** `@login_required` decorator ensures only authenticated users can access
+- **Authorization:** Check `current_user.position != 'admin'` to restrict to admin-only
+- **Input Validation:** Date format validation, range validation, and logical validation (start ≤ end)
+- **SQL Injection Prevention:** Using SQLAlchemy ORM with parameterized queries (no raw SQL)
+- **XSS Prevention:** Data is properly escaped in templates and JSON responses
+
+No CSRF protection is needed for GET requests as they don't modify state.
 
 ## Design Decisions
 
