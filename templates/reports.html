@@ -229,6 +229,36 @@
       </div>
     </div>
   </div>
+
+  <!-- Driver/Assistant Time Log Matrix Card -->
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Driver/Assistant Time Logs</h5>
+      </div>
+      <div class="card-body">
+        <form id="timeLogMatrixForm">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="timeLogStartDate" class="form-label">Start Date</label>
+              <input type="date" class="form-control" id="timeLogStartDate" required>
+            </div>
+            <div class="col-md-6">
+              <label for="timeLogEndDate" class="form-label">End Date</label>
+              <input type="date" class="form-control" id="timeLogEndDate" required>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <button type="submit" class="btn btn-info w-100 text-white">
+                <i class="bi bi-clock"></i> View Time Log Matrix
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Scheduled Report Results -->
@@ -516,6 +546,59 @@
         </div>
       </div>
     </div>
+    <!-- TimeLog Records Section -->
+    <div class="card border-info mt-3">
+      <div class="card-header py-2 bg-info text-white">
+        <h6 class="mb-0"><i class="bi bi-clock"></i> Driver/Assistant Time Log Status</h6>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-striped table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>Date</th>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Time In</th>
+                <th>Time Out</th>
+              </tr>
+            </thead>
+            <tbody id="missingTimeLogBody">
+              <!-- Missing TimeLog data will be dynamically inserted here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Driver/Assistant Time Log Matrix Results -->
+<div class="card mt-4" id="timeLogMatrixResults" style="display:none;">
+  <div class="card-header d-flex justify-content-between align-items-center bg-info text-white">
+    <h5><i class="bi bi-clock-history"></i> Driver/Assistant Time Log Matrix</h5>
+    <div>
+      <span id="timeLogDateRange" class="me-3"></span>
+      <button type="button" class="btn btn-sm btn-light" id="exportTimeLogBtn">
+        <i class="bi bi-download"></i> Export CSV
+      </button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover" id="timeLogMatrixTable">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Role</th>
+            <!-- Date columns added dynamically -->
+          </tr>
+        </thead>
+        <tbody id="timeLogMatrixBody">
+          <!-- Data rows added dynamically -->
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -572,8 +655,17 @@ document.addEventListener('DOMContentLoaded', function() {
   const missingResults = document.getElementById('missingResults');
   const missingTripsBody = document.getElementById('missingTripsBody');
   const missingOdoBody = document.getElementById('missingOdoBody');
+  const missingTimeLogBody = document.getElementById('missingTimeLogBody');
   const exportMissingBtn = document.getElementById('exportMissingBtn');
   const missingDateRange = document.getElementById('missingDateRange');
+
+  // Time Log Matrix Form
+  const timeLogMatrixForm = document.getElementById('timeLogMatrixForm');
+  const timeLogMatrixResults = document.getElementById('timeLogMatrixResults');
+  const timeLogMatrixTable = document.getElementById('timeLogMatrixTable');
+  const timeLogMatrixBody = document.getElementById('timeLogMatrixBody');
+  const exportTimeLogBtn = document.getElementById('exportTimeLogBtn');
+  const timeLogDateRange = document.getElementById('timeLogDateRange');
 
   // Load Manila date and set default date range to last 7 days
   fetch('/api/manila_date')
@@ -596,6 +688,8 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('difotEndDate').value = defaultEnd;
       document.getElementById('missingStartDate').value = defaultStart;
       document.getElementById('missingEndDate').value = defaultEnd;
+      document.getElementById('timeLogStartDate').value = defaultStart;
+      document.getElementById('timeLogEndDate').value = defaultEnd;
     })
     .catch(error => {
       console.error('Error loading Manila date:', error);
@@ -620,6 +714,8 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('difotEndDate').value = defaultEnd;
       document.getElementById('missingStartDate').value = defaultStart;
       document.getElementById('missingEndDate').value = defaultEnd;
+      document.getElementById('timeLogStartDate').value = defaultStart;
+      document.getElementById('timeLogEndDate').value = defaultEnd;
     });
 
   // Load vehicles for fuel efficiency filter
@@ -1035,7 +1131,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Calculate utilization percentage
         const utilization = row.capacity > 0 ? (row.actual / row.capacity * 100).toFixed(1) : '0.0';
-        const utilizationClass = (utilization >= 80 && utilization <= 100) ? 'success' : utilization >= 50 ? 'warning' : 'danger';
+        const utilizationClass = utilization >= 80 ? 'success' : utilization >= 50 ? 'warning' : 'danger';
         const actualFormatted = parseFloat(row.actual || 0).toFixed(3);
         const branchCount = row.branch_count || 0;
 
@@ -1313,6 +1409,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function displayMissingData(data) {
     missingTripsBody.innerHTML = '';
     missingOdoBody.innerHTML = '';
+    missingTimeLogBody.innerHTML = '';
 
     // Display missing trips data
     if (!data.missing_trips || data.missing_trips.length === 0) {
@@ -1321,6 +1418,14 @@ document.addEventListener('DOMContentLoaded', function() {
       data.missing_trips.forEach(row => {
         const tr = document.createElement('tr');
 
+        const arriveBadge = row.arrive && row.arrive !== 'Missing'
+          ? `<span class="badge bg-success">${row.arrive}</span>`
+          : '<span class="badge bg-warning text-dark">Missing</span>';
+
+        const departureBadge = row.departure && row.departure !== 'Missing'
+          ? `<span class="badge bg-success">${row.departure}</span>`
+          : '<span class="badge bg-warning text-dark">Missing</span>';
+
         tr.innerHTML = `
           <td>${row.delivery_schedule}</td>
           <td><strong>${row.plate_number}</strong></td>
@@ -1328,8 +1433,8 @@ document.addEventListener('DOMContentLoaded', function() {
           <td>${row.assistants || 'N/A'}</td>
           <td><span class="badge bg-primary">Trip ${row.trip_number}</span></td>
           <td>${row.branch_name}</td>
-          <td><span class="badge bg-warning text-dark">${row.arrive || 'Missing'}</span></td>
-          <td><span class="badge bg-warning text-dark">${row.departure || 'Missing'}</span></td>
+          <td>${arriveBadge}</td>
+          <td>${departureBadge}</td>
         `;
         missingTripsBody.appendChild(tr);
       });
@@ -1361,6 +1466,41 @@ document.addEventListener('DOMContentLoaded', function() {
           <td>${hasEndOdo}</td>
         `;
         missingOdoBody.appendChild(tr);
+      });
+    }
+
+    // Display TimeLog status data
+    if (!data.time_log_status || data.time_log_status.length === 0) {
+      missingTimeLogBody.innerHTML = '<tr><td colspan="5" class="text-center text-success"><i class="bi bi-check-circle"></i> No drivers/assistants assigned in this date range</td></tr>';
+    } else {
+      data.time_log_status.forEach(row => {
+        const tr = document.createElement('tr');
+
+        // Time In: show actual time if exists, otherwise show "Missing"
+        const timeInBadge = row.time_in
+          ? `<span class="badge bg-success">${row.time_in}</span>`
+          : '<span class="badge bg-warning text-dark">Missing</span>';
+
+        // Time Out: show actual time if exists, otherwise show "Missing"
+        const timeOutBadge = row.time_out
+          ? `<span class="badge bg-success">${row.time_out}</span>`
+          : '<span class="badge bg-warning text-dark">Missing</span>';
+
+        // Role badge color
+        const roleColors = {
+          'Driver': 'primary',
+          'Assistant': 'info'
+        };
+        const roleColor = roleColors[row.role] || 'secondary';
+
+        tr.innerHTML = `
+          <td>${row.delivery_schedule}</td>
+          <td><strong>${row.manpower_name}</strong></td>
+          <td><span class="badge bg-${roleColor}">${row.role}</span></td>
+          <td>${timeInBadge}</td>
+          <td>${timeOutBadge}</td>
+        `;
+        missingTimeLogBody.appendChild(tr);
       });
     }
 
