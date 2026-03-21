@@ -1548,6 +1548,81 @@ document.addEventListener('DOMContentLoaded', function() {
 
     missingResults.style.display = 'block';
   }
+
+  function displayTimeLogMatrix(data) {
+    const tbody = document.getElementById('timeLogMatrixBody');
+    const thead = document.querySelector('#timeLogMatrixTable thead tr');
+    tbody.innerHTML = '';
+
+    // Handle empty data
+    if (!data.personnel || data.personnel.length === 0) {
+      const colspan = 2 + data.date_range.dates.length;
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="${colspan}" class="text-center text-muted">
+            <i class="bi bi-info-circle"></i>
+            No drivers or assistants assigned to trips in this date range
+          </td>
+        </tr>
+      `;
+      timeLogMatrixResults.style.display = 'block';
+      return;
+    }
+
+    // Display date range in header
+    document.getElementById('timeLogDateRange').textContent =
+      `${data.date_range.start} to ${data.date_range.end}`;
+
+    // Clear existing date columns from previous submissions (keep Name and Role)
+    while (thead.children.length > 2) {
+      thead.removeChild(thead.lastChild);
+    }
+
+    // Build date columns
+    data.date_range.dates.forEach(date => {
+      const th = document.createElement('th');
+      th.textContent = date;
+      thead.appendChild(th);
+    });
+
+    // Build personnel rows
+    data.personnel.forEach(person => {
+      const tr = document.createElement('tr');
+
+      // Name column
+      const nameTd = document.createElement('td');
+      nameTd.innerHTML = `<strong>${person.name}</strong>`;
+      tr.appendChild(nameTd);
+
+      // Role column
+      const roleTd = document.createElement('td');
+      const roleColor = person.role === 'Driver' ? 'primary' : 'info';
+      roleTd.innerHTML = `<span class="badge bg-${roleColor}">${person.role}</span>`;
+      tr.appendChild(roleTd);
+
+      // Date columns
+      data.date_range.dates.forEach(date => {
+        const td = document.createElement('td');
+        const timeData = person.dates[date];
+
+        if (timeData.time_in === 'Missing' && timeData.time_out === 'Missing') {
+          td.innerHTML = '<span class="badge bg-warning text-dark">Missing</span>';
+        } else {
+          const timeInClass = timeData.time_in !== 'Missing' ? 'success' : 'warning';
+          const timeOutClass = timeData.time_out !== 'Missing' ? 'success' : 'warning';
+          td.innerHTML = `
+            <small><span class="badge bg-${timeInClass}">${timeData.time_in}</span></small><br>
+            <small><span class="badge bg-${timeOutClass}">${timeData.time_out}</span></small>
+          `;
+        }
+        tr.appendChild(td);
+      });
+
+      tbody.appendChild(tr);
+    });
+
+    timeLogMatrixResults.style.display = 'block';
+  }
 });
 </script>
 {% endblock %}
