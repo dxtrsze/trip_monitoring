@@ -90,6 +90,7 @@ sys.path.insert(0, project_root)
 
 from app import app, db
 from models import DailyVehicleCount, Vehicle
+from sqlalchemy.exc import IntegrityError
 
 
 def count_daily_active_vehicles():
@@ -111,10 +112,19 @@ def count_daily_active_vehicles():
                 print(f"[{datetime.now()}] Updated daily vehicle count for {today}: {active_count} active vehicles")
             else:
                 # Create new record
-                daily_count = DailyVehicleCount(date=today, qty=active_count)
-                db.session.add(daily_count)
-                db.session.commit()
-                print(f"[{datetime.now()}] Created daily vehicle count for {today}: {active_count} active vehicles")
+                try:
+                    daily_count = DailyVehicleCount(date=today, qty=active_count)
+                    db.session.add(daily_count)
+                    db.session.commit()
+                    print(f"[{datetime.now()}] Created daily vehicle count for {today}: {active_count} active vehicles")
+                except IntegrityError:
+                    # Race condition: record created by another process
+                    db.session.rollback()
+                    existing_count = DailyVehicleCount.query.filter_by(date=today).first()
+                    if existing_count:
+                        existing_count.qty = active_count
+                        db.session.commit()
+                        print(f"[{datetime.now()}] Updated daily vehicle count for {today} (race condition recovery): {active_count} active vehicles")
 
             return True
 
@@ -130,7 +140,7 @@ if __name__ == '__main__':
 EOF
 ```
 
-Expected: File created with 57 lines
+Expected: File created with 67 lines
 
 - [ ] **Step 2: Make script executable**
 
@@ -157,11 +167,39 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 
 ---
 
-## Task 3: Test Execution Script Manually
+## Task 3: Pre-Test Database Verification
+
+**Files:**
+- Verify: Database path from app config
+- Verify: Database schema
+
+- [ ] **Step 1: Verify actual database path from app config**
+
+Run: `python3 -c "from app import app; print(app.config['SQLALCHEMY_DATABASE_URI'])"`
+Expected: Shows database URI (e.g., `sqlite:///trip_monitoring.db` or `sqlite:///instance/trip_monitoring.db`)
+
+- [ ] **Step 2: Determine database file location**
+
+If the URI shows `sqlite:///instance/trip_monitoring.db`, use that path.
+If the URI shows `sqlite:///trip_monitoring.db` (no instance/), use root directory path.
+
+- [ ] **Step 3: Verify database file exists**
+
+Run: `ls -lh instance/trip_monitoring.db` (or `trip_monitoring.db` based on Step 2)
+Expected: File exists with size > 0
+
+- [ ] **Step 4: Verify DailyVehicleCount table schema**
+
+Run: `sqlite3 instance/trip_monitoring.db ".schema daily_vehicle_count"` (adjust path if needed)
+Expected: Shows table schema with columns: `id`, `date`, `qty`, `created_at`
+
+---
+
+## Task 4: Test Execution Script Manually
 
 **Files:**
 - Test: `bin/run_daily_vehicle_count.py`
-- Test: Database `instance/trip_monitoring.db`
+- Test: Database (path from Task 3, Step 1)
 
 - [ ] **Step 1: Run script manually**
 
@@ -175,8 +213,10 @@ Expected: `0` (success)
 
 - [ ] **Step 3: Verify database record**
 
-Run: `sqlite3 instance/trip_monitoring.db "SELECT date, qty FROM daily_vehicle_count ORDER BY date DESC LIMIT 1;"`
-Expected: Shows today's date with vehicle count
+Run: `sqlite3 instance/trip_monitoring.db "SELECT date, qty, created_at FROM daily_vehicle_count ORDER BY date DESC LIMIT 1;"`
+Expected: Shows today's date with vehicle count and timestamp
+
+Note: If your database is in a different location (from Task 3, Step 1), adjust the path accordingly.
 
 - [ ] **Step 4: Test idempotency (run again)**
 
@@ -188,12 +228,18 @@ Expected: Output shows "Updated" not "Created" (record already exists)
 Run: `sqlite3 instance/trip_monitoring.db "SELECT COUNT(*) FROM daily_vehicle_count WHERE date = date('now');"`
 Expected: `1` (only one record per day)
 
+Note: Adjust database path if needed based on Task 3, Step 1.
+
 ---
 
-## Task 4: Create Systemd Service Unit
+## Task 5: Create Systemd Service Unit
+
+---
+
+## Task 6: Create Systemd Timer Unit
 
 **Files:**
-- Create: `systemd/trip-monitoring-vehicle-count.service`
+- Create: `systemd/trip-monitoring-vehicle-count.timer`
 
 - [ ] **Step 1: Determine deployment configuration**
 
@@ -292,10 +338,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 
 ---
 
-## Task 5: Create Systemd Timer Unit
-
-**Files:**
-- Create: `systemd/trip-monitoring-vehicle-count.timer`
+## Task 7: Pre-Deployment Verification
 
 - [ ] **Step 1: Create systemd timer unit**
 
@@ -342,7 +385,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 
 ---
 
-## Task 6: Pre-Deployment Verification
+## Task 8: Install Systemd Units
 
 **Files:**
 - Verify: File permissions
@@ -389,7 +432,7 @@ If this fails with permission errors, fix permissions before proceeding.
 
 ---
 
-## Task 7: Install Systemd Units
+## Task 9: Test Manual Service Trigger
 
 **Files:**
 - Install: `/etc/systemd/system/trip-monitoring-vehicle-count.service`
@@ -417,7 +460,7 @@ Expected: Shows both service and timer files (disabled status)
 
 ---
 
-## Task 8: Test Manual Service Trigger
+## Task 10: Enable and Start Timer
 
 **Files:**
 - Test: Systemd service execution
@@ -452,7 +495,7 @@ If errors appear, review logs and fix before proceeding.
 
 ---
 
-## Task 9: Enable and Start Timer
+## Task 10: Enable and Start Timer
 
 **Files:**
 - Enable: Systemd timer
@@ -489,14 +532,55 @@ Expected: `Persistent=yes`
 
 ---
 
-## Task 10: Remove Embedded Scheduler from Flask App
+## Task 11: Backup Flask App and Remove Embedded Scheduler
 
 **Files:**
 - Modify: `app.py:6373` (approximately)
+- Backup: `app.py.backup.$(date +%Y%m%d_%H%M%S)`
 
-- [ ] **Step 1: Find scheduler initialization line**
+- [ ] **Step 1: Create backup of app.py**
+
+Run: `cp app.py app.py.backup.$(date +%Y%m%d_%H%M%S)`
+Expected: Backup file created with timestamp
+
+- [ ] **Step 2: Verify backup was created**
+
+Run: `ls -lh app.py.backup.*`
+Expected: Shows backup file with recent timestamp
+
+- [ ] **Step 3: Find scheduler initialization line**
 
 Run: `grep -n "scheduler = init_scheduler()" app.py`
+Expected: Shows line number (typically around 6373)
+
+Note the exact line number for next step.
+
+- [ ] **Step 4: Comment out scheduler initialization**
+
+Edit `app.py` and comment out the scheduler initialization line:
+
+```python
+# OLD (line ~6373):
+scheduler = init_scheduler()
+
+# NEW:
+# scheduler = init_scheduler()  # DEPRECATED: Replaced by systemd timer
+scheduler = None
+```
+
+---
+
+## Task 12: Restart Flask Application
+
+**Files:**
+- Restart: Gunicorn or Flask application service
+
+- [ ] **Step 1: Verify app changes are committed**
+
+Run: `git status | grep app.py`
+Expected: No uncommitted changes to app.py
+
+- [ ] **Step 2: Identify Flask application service name**
 Expected: Shows line number (typically around 6373)
 
 Note the exact line number for next step.
@@ -538,7 +622,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 
 ---
 
-## Task 11: Restart Flask Application
+## Task 13: End-to-End Verification
 
 **Files:**
 - Restart: Gunicorn or Flask application service
@@ -577,7 +661,7 @@ Expected: No output (no standalone scheduler process)
 
 ---
 
-## Task 12: End-to-End Verification
+## Task 14: Clean Up Deprecated Files (Optional)
 
 **Files:**
 - Verify: Complete system functionality
@@ -649,8 +733,6 @@ EOF
 ```
 
 ---
-
-## Task 13: Clean Up Deprecated Files (Optional)
 
 **Files:**
 - Remove: `scheduler.py` (deprecated)
