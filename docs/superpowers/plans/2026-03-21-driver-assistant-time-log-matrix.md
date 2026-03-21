@@ -23,25 +23,13 @@
 ## Task 1: Add shared helper function to query and pivot time log data
 
 **Files:**
-- Modify: `app.py` (after existing import section, before route definitions)
+- Modify: `app.py` (after `/export_missing_data` endpoint, around line 5315)
 
 **Context:** This helper function will be reused by both the main endpoint and the CSV export endpoint to avoid duplicating complex query and pivot logic.
 
-- [ ] **Step 1: Add required imports for the helper function**
+**Note:** Models (Trip, Schedule, Manpower, etc.) are already imported at module level (line 14). The helper function can use them directly without re-importing.
 
-Location: In `app.py`, add to the imports section (around line 10-20)
-
-```python
-import csv
-import io
-from datetime import datetime, timedelta
-from sqlalchemy import cast, Date
-```
-
-Run: `python -c "import app; print('Imports successful')"`
-Expected: No import errors
-
-- [ ] **Step 2: Write the shared helper function skeleton**
+- [ ] **Step 1: Write the shared helper function skeleton**
 
 Location: In `app.py`, after all model imports and before first route definition (around line 550-600, after `DailyVehicleCount` model definition)
 
@@ -59,6 +47,10 @@ def get_time_log_matrix_data(start_date, end_date):
             - personnel_list: List of dicts with keys: manpower_id, name, role, dates
             - date_list: List of date strings in YYYY-MM-DD format
     """
+    # Import Date casting function locally (following existing codebase pattern)
+    from sqlalchemy import cast, Date
+    from collections import namedtuple
+
     # TODO: Implement query logic
     return [], []
 ```
@@ -72,8 +64,24 @@ Add to function body:
 
 ```python
 def get_time_log_matrix_data(start_date, end_date):
+    """
+    Query and pivot time log data for matrix display.
+
+    Args:
+        start_date: datetime.date object
+        end_date: datetime.date object (exclusive, adjusted with +1 day)
+
+    Returns:
+        tuple: (personnel_list, date_list)
+            - personnel_list: List of dicts with keys: manpower_id, name, role, dates
+            - date_list: List of date strings in YYYY-MM-DD format
+    """
+    # Import Date casting function locally (following existing codebase pattern)
+    from sqlalchemy import cast, Date
+    from collections import namedtuple
+
     # Get all unique drivers and assistants assigned to trips in date range
-    from . import Trip, Schedule, Manpower, trip_driver, trip_assistant, TimeLog
+    # Note: Models are already imported at module level
 
     manpower_assignments = db.session.query(
         Schedule.delivery_schedule,
@@ -103,6 +111,8 @@ def get_time_log_matrix_data(start_date, end_date):
         )
     ).order_by(Manpower.name, Manpower.role).all()
 
+**Note:** Uses `.union()` to eliminate duplicate personnel entries. If the same person appears as both a driver AND an assistant on different trips, they will appear as two separate rows (one for each role), which is the intended behavior per the spec.
+
     return [], []
 ```
 
@@ -130,6 +140,9 @@ Add after the TimeLog query:
 
 ```python
     # Create lookup dictionary: (date, user_id) -> TimeLog data
+    # Note: If multiple TimeLog entries exist for the same person on the same day,
+    # only the last one will be kept (last write wins). This is acceptable as
+    # TimeLog should have one entry per person per day.
     timelog_dict = {}
     for tl in time_logs:
         tl_date = tl.time_in.date()
@@ -293,7 +306,8 @@ Expected: No syntax errors
     if delta.days > 90:
         return jsonify({'error': 'Date range cannot exceed 90 days'}), 400
 
-    # Include the entire end date
+    # Include the entire end date by adding 1 day
+    # This makes the range inclusive: if user selects Mar 15-20, we query through Mar 20 23:59:59
     end_date = end_date + timedelta(days=1)
 
     # TODO: Call helper and build response
@@ -785,6 +799,11 @@ Add after the empty data check:
     document.getElementById('timeLogDateRange').textContent =
       `${data.date_range.start} to ${data.date_range.end}`;
 
+    // Clear existing date columns from previous submissions (keep Name and Role)
+    while (thead.children.length > 2) {
+      thead.removeChild(thead.lastChild);
+    }
+
     // Build date columns
     data.date_range.dates.forEach(date => {
       const th = document.createElement('th');
@@ -958,7 +977,23 @@ Test various invalid inputs:
 2. Date range > 90 days → Expected: Error alert
 3. Invalid date format → Expected: Error alert (should be caught by HTML5 date input)
 
-- [ ] **Step 6: Test responsive behavior**
+- [ ] **Step 6: Test non-admin access denial**
+
+1. Log out as admin
+2. Log in as a non-admin user (e.g., driver or dispatcher)
+3. Navigate to Reports page
+4. Try to access the endpoint directly via browser console:
+   ```javascript
+   fetch('/driver_assistant_time_logs?start_date=2026-03-15&end_date=2026-03-20')
+     .then(r => r.json())
+     .then(data => console.log(data))
+   ```
+
+Expected:
+- Error response with access denied message
+- Or redirect to schedule view with flash message "Access denied. Admin privileges required."
+
+- [ ] **Step 7: Test responsive behavior**
 
 Resize browser window to mobile width (< 768px)
 
@@ -967,7 +1002,7 @@ Expected:
 - First columns (Name, Role) remain visible
 - Can scroll horizontally to see all date columns
 
-- [ ] **Step 7: Test with incomplete TimeLog data**
+- [ ] **Step 8: Test with incomplete TimeLog data**
 
 1. Find a date where someone has time_in but missing time_out
 2. View that date range
@@ -976,7 +1011,7 @@ Expected:
 - time_in shows in green badge
 - time_out shows in yellow "Missing" badge
 
-- [ ] **Step 8: Commit any final adjustments**
+- [ ] **Step 9: Commit any final adjustments**
 
 ```bash
 git add app.py templates/reports.html
