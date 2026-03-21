@@ -5424,6 +5424,73 @@ def driver_assistant_time_logs():
         return jsonify({'error': f'Error fetching time log data: {str(e)}'}), 500
 
 
+@app.route('/export_driver_assistant_time_logs')
+@login_required
+def export_driver_assistant_time_logs():
+    """Export Driver/Assistant Time Log Matrix to CSV"""
+    if current_user.position != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('view_schedule'))
+
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    if not start_date_str or not end_date_str:
+        return "Start date and end date are required", 400
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        delta = end_date - start_date
+        if delta.days > 90:
+            return "Date range cannot exceed 90 days", 400
+
+        # Include the entire end date
+        end_date = end_date + timedelta(days=1)
+
+        # Get matrix data using shared helper
+        personnel_list, date_list = get_time_log_matrix_data(start_date, end_date)
+
+        # Generate CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Write header rows
+        writer.writerow(['Driver/Assistant Time Logs Report'])
+        writer.writerow([f'Start Date: {start_date_str}, End Date: {end_date_str}'])
+        writer.writerow([])
+
+        # Build column headers
+        headers = ['Name', 'Role']
+        for date_str in date_list:
+            headers.extend([f'{date_str} In', f'{date_str} Out'])
+        writer.writerow(headers)
+
+        # Write data rows
+        for person in personnel_list:
+            row = [person['name'], person['role']]
+            for date_str in date_list:
+                time_data = person['dates'][date_str]
+                row.extend([time_data['time_in'], time_data['time_out']])
+            writer.writerow(row)
+
+        output.seek(0)
+
+        # Return as downloadable CSV file
+        filename = f"driver_assistant_time_logs_{start_date_str}_to_{end_date_str}.csv"
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename={filename}'}
+        )
+
+    except ValueError as e:
+        return f"Invalid date format: {str(e)}", 400
+    except Exception as e:
+        return f"Error exporting time log data: {str(e)}", 500
+
+
 def get_time_log_matrix_data(start_date, end_date):
     """
     Query and pivot time log data for matrix display.
