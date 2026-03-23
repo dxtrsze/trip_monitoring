@@ -6766,6 +6766,19 @@ def backload():
     return render_template("backload.html")
 
 
+@app.route("/view_backload")
+@login_required
+def view_backload():
+    """View all backload records (read-only for all authenticated users)"""
+    # Get all backload records, ordered by posting date descending
+    backload_records = (
+        db.session.query(Backload)
+        .order_by(Backload.posting_date.desc(), Backload.document_number)
+        .all()
+    )
+    return render_template("view_backload.html", backload_records=backload_records)
+
+
 @app.route("/search_trip_details")
 @login_required
 def search_trip_details():

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}View Backload{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1><i class="bi bi-box-seam"></i> View Backload</h1>
+  <a href="{{ url_for('view_schedule') }}" class="btn btn-secondary">
+    <i class="bi bi-arrow-left"></i> Back to Schedules
+  </a>
+</div>
+
+<!-- Backload Records Card -->
+<div class="card">
+  <div class="card-header bg-primary text-white">
+    <h5 class="mb-0"><i class="bi bi-list-ul"></i> All Backload Records</h5>
+  </div>
+  <div class="card-body">
+    {% if backload_records %}
+    <div class="table-responsive">
+      <table class="table table-striped table-hover">
+        <thead class="table-light">
+          <tr>
+            <th>Posting Date</th>
+            <th>Type</th>
+            <th>Document Number</th>
+            <th>Item Number</th>
+            <th>Ordered Qty</th>
+            <th>Delivered Qty</th>
+            <th>Remaining Qty</th>
+            <th>From Warehouse</th>
+            <th>To Warehouse</th>
+            <th>Branch</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for record in backload_records %}
+          <tr>
+            <td>{{ record.posting_date.strftime('%Y-%m-%d') if record.posting_date else 'N/A' }}</td>
+            <td><span class="badge bg-info">{{ record.type }}</span></td>
+            <td><strong>{{ record.document_number }}</strong></td>
+            <td>{{ record.item_number }}</td>
+            <td>{{ record.ordered_qty }}</td>
+            <td>{{ record.delivered_qty }}</td>
+            <td>
+              {% if record.remaining_open_qty is not none %}
+                <span class="badge {% if record.remaining_open_qty > 0 %}bg-warning{% else %}bg-success{% endif %}">
+                  {{ record.remaining_open_qty }}
+                </span>
+              {% else %}
+                <span class="text-muted">N/A</span>
+              {% endif %}
+            </td>
+            <td>{{ record.from_whse_code or 'N/A' }}</td>
+            <td>{{ record.to_whse or 'N/A' }}</td>
+            <td>{{ record.branch_name_v2 or record.branch_name or 'N/A' }}</td>
+            <td>
+              {% if record.remarks %}
+                <small class="text-muted">{{ record.remarks[:50] }}{% if record.remarks|length > 50 %}...{% endif %}</small>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+      <i class="bi bi-info-circle"></i> No backload records found in the system.
+    </div>
+    {% endif %}
+  </div>
+  {% if backload_records %}
+  <div class="card-footer text-muted">
+    <small><i class="bi bi-info-circle"></i> Showing {{ backload_records|length }} backload record(s)</small>
+  </div>
+  {% endif %}
+</div>
+
+{% if current_user.position == 'admin' %}
+<div class="alert alert-warning mt-3">
+  <i class="bi bi-exclamation-triangle"></i>
+  <strong>Admin Access:</strong> Use <a href="{{ url_for('backload') }}" class="alert-link">Backload Management</a> to search and manage backload records.
+</div>
+{% endif %}
+{% endblock %}

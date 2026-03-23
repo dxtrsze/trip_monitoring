@@ -60,6 +60,7 @@
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('backload') }}">Backload Management</a></li>
                             {% endif %}
+                            <li><a class="dropdown-item" href="{{ url_for('view_backload') }}">View Backload</a></li>
                         </ul>
                     </li>
                     {% if current_user.position == 'admin' %}

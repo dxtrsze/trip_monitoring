@@ -1,24 +1,44 @@
 // Dashboard charts module using Apache ECharts
 
-const DashboardCharts = (function() {
+const DashboardCharts = (function () {
   let charts = {}; // Store chart instances
 
   // Initialize KPI cards rendering
-  function renderKPIs(kpiData, containerId = 'kpiCards') {
+  function renderKPIs(kpiData, containerId = "kpiCards") {
     const container = document.getElementById(containerId);
     if (!container) return;
-    container.innerHTML = '';
+    container.innerHTML = "";
 
     const kpiConfig = [
-      { key: 'on_time_delivery_rate', label: 'On-Time Delivery Rate', type: 'on_time' },
-      { key: 'in_full_delivery_rate', label: 'In-Full Delivery Rate', type: 'on_time' },
-      { key: 'difot_score', label: 'DIFOT Score', type: 'on_time' },
-      { key: 'truck_utilization', label: 'Truck Utilization', type: 'utilization' },
-      { key: 'fuel_efficiency', label: 'Fuel Efficiency (KM/L)', type: 'efficiency' },
-      { key: 'data_completeness', label: 'Data Completeness', type: 'completeness' }
+      {
+        key: "on_time_delivery_rate",
+        label: "On-Time Delivery Rate",
+        type: "on_time",
+      },
+      {
+        key: "in_full_delivery_rate",
+        label: "In-Full Delivery Rate",
+        type: "on_time",
+      },
+      { key: "difot_score", label: "DIFOT Score", type: "on_time" },
+      {
+        key: "truck_utilization",
+        label: "Truck Utilization",
+        type: "utilization",
+      },
+      {
+        key: "fuel_efficiency",
+        label: "Fuel Efficiency (KM/L)",
+        type: "efficiency",
+      },
+      {
+        key: "data_completeness",
+        label: "Data Completeness",
+        type: "completeness",
+      },
     ];
 
-    kpiConfig.forEach(config => {
+    kpiConfig.forEach((config) => {
       const kpi = kpiData[config.key];
       const color = getPerformanceColor(kpi.value, config.type);
       const card = createKPICard(config, kpi, color);
@@ -27,19 +47,23 @@ const DashboardCharts = (function() {
   }
 
   function createKPICard(config, kpi, color) {
-    const col = document.createElement('div');
-    col.className = 'col-md-4 col-sm-6 mb-3';
+    const col = document.createElement("div");
+    col.className = "col-md-4 col-sm-6 mb-3";
 
-    const card = document.createElement('div');
-    card.className = 'card h-100';
+    const card = document.createElement("div");
+    card.className = "card h-100";
     card.style.borderTop = `4px solid ${color}`;
 
     // Format value based on KPI type
     let formattedValue;
-    if (typeof kpi.value === 'number') {
-      if (config.key.includes('rate') || config.key.includes('score') ||
-          config.key.includes('utilization') || config.key.includes('completeness')) {
-        formattedValue = kpi.value.toFixed(1) + '%';
+    if (typeof kpi.value === "number") {
+      if (
+        config.key.includes("rate") ||
+        config.key.includes("score") ||
+        config.key.includes("utilization") ||
+        config.key.includes("completeness")
+      ) {
+        formattedValue = kpi.value.toFixed(1) + "%";
       } else {
         formattedValue = kpi.value.toFixed(1);
       }
@@ -71,47 +95,49 @@ const DashboardCharts = (function() {
 
   // Initialize delivery counts chart
   function initDeliveryCountsChart(data) {
-    const chartDom = document.getElementById('deliveryCountsChart');
+    const chartDom = document.getElementById("deliveryCountsChart");
     if (!chartDom) return;
 
     charts.deliveryCounts = echarts.init(chartDom);
 
-    const dates = data.map(d => formatDate(d.date));
-    const counts = data.map(d => d.count);
+    const dates = data.map((d) => formatDate(d.date));
+    const counts = data.map((d) => d.count);
 
     const option = {
-      title: { text: '' },
+      title: { text: "" },
       tooltip: {
-        trigger: 'axis',
-        formatter: function(params) {
+        trigger: "axis",
+        formatter: function (params) {
           const p = params[0];
           return `${p.axisValue}<br/>Deliveries: <strong>${p.value}</strong>`;
-        }
+        },
       },
       xAxis: {
-        type: 'category',
+        type: "category",
         data: dates,
-        axisLabel: { rotate: 30 }
+        axisLabel: { rotate: 30 },
       },
       yAxis: {
-        type: 'value',
-        name: 'Deliveries'
+        type: "value",
+        name: "Deliveries",
       },
-      series: [{
-        name: 'Deliveries',
-        type: 'line',
-        smooth: true,
-        data: counts,
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
-            { offset: 1, color: 'rgba(59, 130, 246, 0.05)' }
-          ])
+      series: [
+        {
+          name: "Deliveries",
+          type: "line",
+          smooth: true,
+          data: counts,
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: "rgba(59, 130, 246, 0.3)" },
+              { offset: 1, color: "rgba(59, 130, 246, 0.05)" },
+            ]),
+          },
+          itemStyle: { color: "#3b82f6" },
+          lineStyle: { width: 3 },
         },
-        itemStyle: { color: '#3b82f6' },
-        lineStyle: { width: 3 }
-      }],
-      grid: { left: 60, right: 20, top: 20, bottom: 60 }
+      ],
+      grid: { left: 60, right: 20, top: 20, bottom: 60 },
     };
 
     charts.deliveryCounts.setOption(option);
@@ -119,44 +145,44 @@ const DashboardCharts = (function() {
 
   // Initialize fuel efficiency chart
   function initFuelEfficiencyChart(data) {
-    const chartDom = document.getElementById('fuelEfficiencyChart');
+    const chartDom = document.getElementById("fuelEfficiencyChart");
     if (!chartDom) return;
 
     charts.fuelEfficiency = echarts.init(chartDom);
 
-    const dates = data.map(d => formatDate(d.date));
-    const kmPerLiter = data.map(d => d.km_per_liter);
+    const dates = data.map((d) => formatDate(d.date));
+    const kmPerLiter = data.map((d) => d.km_per_liter);
 
     const option = {
-      title: { text: '' },
+      title: { text: "" },
       tooltip: {
-        trigger: 'axis',
-        formatter: function(params) {
+        trigger: "axis",
+        formatter: function (params) {
           const p = params[0];
           return `${p.axisValue}<br/>${p.marker}${p.seriesName}: <strong>${p.value.toFixed(2)}</strong>`;
-        }
+        },
       },
-      legend: { data: ['KM/Liter'] },
+      legend: { data: ["KM/Liter"] },
       xAxis: {
-        type: 'category',
+        type: "category",
         data: dates,
-        axisLabel: { rotate: 30 }
+        axisLabel: { rotate: 30 },
       },
       yAxis: {
-        type: 'value',
-        name: 'KM/Liter'
+        type: "value",
+        name: "KM/Liter",
       },
       series: [
         {
-          name: 'KM/Liter',
-          type: 'line',
+          name: "KM/Liter",
+          type: "line",
           smooth: true,
           data: kmPerLiter,
-          itemStyle: { color: '#3b82f6' },
-          lineStyle: { width: 2 }
-        }
+          itemStyle: { color: "#3b82f6" },
+          lineStyle: { width: 2 },
+        },
       ],
-      grid: { left: 60, right: 40, top: 40, bottom: 60 }
+      grid: { left: 60, right: 40, top: 40, bottom: 60 },
     };
 
     charts.fuelEfficiency.setOption(option);
@@ -164,48 +190,50 @@ const DashboardCharts = (function() {
 
   // Initialize truck utilization chart
   function initTruckUtilizationChart(data) {
-    const chartDom = document.getElementById('truckUtilizationChart');
+    const chartDom = document.getElementById("truckUtilizationChart");
     if (!chartDom) return;
 
     charts.truckUtilization = echarts.init(chartDom);
 
-    const dates = data.map(d => formatDate(d.date));
-    const utilization = data.map(d => d.utilization_percent);
+    const dates = data.map((d) => formatDate(d.date));
+    const utilization = data.map((d) => d.utilization_percent);
 
     const option = {
-      title: { text: '' },
+      title: { text: "" },
       tooltip: {
-        trigger: 'axis',
-        formatter: function(params) {
+        trigger: "axis",
+        formatter: function (params) {
           const p = params[0];
           return `${p.axisValue}<br/>Utilization: <strong>${p.value.toFixed(1)}%</strong>`;
-        }
+        },
       },
       xAxis: {
-        type: 'category',
+        type: "category",
         data: dates,
-        axisLabel: { rotate: 30 }
+        axisLabel: { rotate: 30 },
       },
       yAxis: {
-        type: 'value',
-        name: 'Utilization %',
+        type: "value",
+        name: "Utilization %",
         max: 100,
-        axisLabel: { formatter: '{value}%' }
+        axisLabel: { formatter: "{value}%" },
       },
-      series: [{
-        name: 'Utilization',
-        type: 'line',
-        step: 'middle',
-        data: utilization,
-        itemStyle: { color: '#8b5cf6' },
-        lineStyle: { width: 2 },
-        markLine: {
-          data: [{ yAxis: 80, name: 'Target' }],
-          lineStyle: { color: '#10b981', type: 'dashed', width: 2 },
-          label: { formatter: 'Target: 80%' }
-        }
-      }],
-      grid: { left: 60, right: 20, top: 20, bottom: 60 }
+      series: [
+        {
+          name: "Utilization",
+          type: "line",
+          step: "middle",
+          data: utilization,
+          itemStyle: { color: "#8b5cf6" },
+          lineStyle: { width: 2 },
+          markLine: {
+            data: [{ yAxis: 80, name: "Target" }],
+            lineStyle: { color: "#10b981", type: "dashed", width: 2 },
+            label: { formatter: "Target: 80%" },
+          },
+        },
+      ],
+      grid: { left: 60, right: 20, top: 20, bottom: 60 },
     };
 
     charts.truckUtilization.setOption(option);
@@ -213,51 +241,53 @@ const DashboardCharts = (function() {
 
   // Initialize vehicle utilization ranking chart
   function initVehicleUtilizationChart(data) {
-    const chartDom = document.getElementById('vehicleUtilizationChart');
+    const chartDom = document.getElementById("vehicleUtilizationChart");
     if (!chartDom) return;
 
     charts.vehicleUtilization = echarts.init(chartDom);
 
-    const vehicles = data.map(d => d.plate_number);
-    const utilization = data.map(d => d.utilization);
+    const vehicles = data.map((d) => d.plate_number);
+    const utilization = data.map((d) => d.utilization);
 
     const option = {
-      title: { text: '' },
+      title: { text: "" },
       tooltip: {
-        trigger: 'axis',
-        formatter: function(params) {
+        trigger: "axis",
+        formatter: function (params) {
           const p = params[0];
           return `${p.name}<br/>Utilization: <strong>${p.value.toFixed(1)}%</strong>`;
-        }
+        },
       },
       xAxis: {
-        type: 'value',
+        type: "value",
         max: 100,
-        axisLabel: { formatter: '{value}%' }
+        axisLabel: { formatter: "{value}%" },
       },
       yAxis: {
-        type: 'category',
+        type: "category",
         data: vehicles,
-        inverse: true
+        inverse: true,
       },
-      series: [{
-        type: 'bar',
-        data: utilization,
-        itemStyle: {
-          color: function(params) {
-            const value = params.value;
-            if (value >= 80) return '#10b981';
-            if (value >= 50) return '#f59e0b';
-            return '#ef4444';
-          }
+      series: [
+        {
+          type: "bar",
+          data: utilization,
+          itemStyle: {
+            color: function (params) {
+              const value = params.value;
+              if (value >= 80) return "#10b981";
+              if (value >= 50) return "#f59e0b";
+              return "#ef4444";
+            },
+          },
+          label: {
+            show: true,
+            position: "right",
+            formatter: "{c}%",
+          },
         },
-        label: {
-          show: true,
-          position: 'right',
-          formatter: '{c}%'
-        }
-      }],
-      grid: { left: 120, right: 40, top: 20, bottom: 40 }
+      ],
+      grid: { left: 120, right: 40, top: 20, bottom: 40 },
     };
 
     charts.vehicleUtilization.setOption(option);
@@ -265,43 +295,45 @@ const DashboardCharts = (function() {
 
   // Initialize branch frequency chart
   function initBranchFrequencyChart(data) {
-    const chartDom = document.getElementById('branchFrequencyChart');
+    const chartDom = document.getElementById("branchFrequencyChart");
     if (!chartDom) return;
 
     charts.branchFrequency = echarts.init(chartDom);
 
-    const branches = data.map(d => d.branch);
-    const counts = data.map(d => d.delivery_count);
+    const branches = data.map((d) => d.branch);
+    const counts = data.map((d) => d.delivery_count);
 
     const option = {
-      title: { text: '' },
+      title: { text: "" },
       tooltip: {
-        trigger: 'axis',
-        formatter: function(params) {
+        trigger: "axis",
+        formatter: function (params) {
           const p = params[0];
           return `${p.name}<br/>Deliveries: <strong>${p.value}</strong>`;
-        }
+        },
       },
       xAxis: {
-        type: 'category',
+        type: "category",
         data: branches,
-        axisLabel: { rotate: 45, interval: 0 }
+        axisLabel: { rotate: 45, interval: 0 },
       },
       yAxis: {
-        type: 'value',
-        name: 'Deliveries'
+        type: "value",
+        name: "Deliveries",
       },
-      series: [{
-        type: 'bar',
-        data: counts,
-        itemStyle: { color: '#14b8a6' },
-        label: {
-          show: true,
-          position: 'top',
-          formatter: '{c}'
-        }
-      }],
-      grid: { left: 60, right: 20, top: 20, bottom: 80 }
+      series: [
+        {
+          type: "bar",
+          data: counts,
+          itemStyle: { color: "#14b8a6" },
+          label: {
+            show: true,
+            position: "top",
+            formatter: "{c}",
+          },
+        },
+      ],
+      grid: { left: 60, right: 20, top: 20, bottom: 80 },
     };
 
     charts.branchFrequency.setOption(option);
@@ -309,22 +341,22 @@ const DashboardCharts = (function() {
 
   // Initialize driver performance chart
   function initDriverPerformanceChart(data) {
-    const chartDom = document.getElementById('driverPerformanceChart');
+    const chartDom = document.getElementById("driverPerformanceChart");
     if (!chartDom) return;
 
     charts.driverPerformance = echarts.init(chartDom);
 
-    const people = data.map(d => d.name);
-    const trips = data.map(d => d.trips);
-    const roles = data.map(d => d.role);
-    const dropCompletion = data.map(d => d.drop_completion_rate);
-    const odoCompliance = data.map(d => d.odo_compliance_rate);
+    const people = data.map((d) => d.name);
+    const trips = data.map((d) => d.trips);
+    const roles = data.map((d) => d.role);
+    const dropCompletion = data.map((d) => d.drop_completion_rate);
+    const odoCompliance = data.map((d) => d.odo_compliance_rate);
 
     const option = {
-      title: { text: '' },
+      title: { text: "" },
       tooltip: {
-        trigger: 'axis',
-        formatter: function(params) {
+        trigger: "axis",
+        formatter: function (params) {
           const p = params[0];
           const idx = params.dataIndex;
           const role = roles[idx];
@@ -343,52 +375,55 @@ const DashboardCharts = (function() {
             📍 Drop Completion: <strong>${dropRate}%</strong> (${completedDrops}/${totalDrops} drops)<br/>
             ⛽ ODO Compliance: <strong>${odoRate}%</strong> (${compliantDays}/${totalDays} days)
           `;
-        }
+        },
       },
       xAxis: {
-        type: 'category',
+        type: "category",
         data: people,
-        axisLabel: { rotate: 45, interval: 0 }
+        axisLabel: { rotate: 45, interval: 0 },
       },
       yAxis: {
-        type: 'value',
-        name: 'Trips'
+        type: "value",
+        name: "Trips",
       },
-      series: [{
-        type: 'bar',
-        data: trips,
-        itemStyle: {
-          color: function(params) {
-            // Color based on role and overall performance
-            const role = roles[params.dataIndex];
-            const dropRate = dropCompletion[params.dataIndex];
-            const odoRate = odoCompliance[params.dataIndex];
+      series: [
+        {
+          type: "bar",
+          data: trips,
+          itemStyle: {
+            color: function (params) {
+              // Color based on role and overall performance
+              const role = roles[params.dataIndex];
+              const dropRate = dropCompletion[params.dataIndex];
+              const odoRate = odoCompliance[params.dataIndex];
 
-            // Base color by role
-            const baseColor = role === 'driver' ? [59, 130, 246] : [139, 92, 246]; // RGB
+              // Base color by role
+              const baseColor =
+                role === "driver" ? [59, 130, 246] : [139, 92, 246]; // RGB
 
-            // Darken color if performance is poor
-            const avgPerformance = (dropRate + odoRate) / 2;
-            if (avgPerformance >= 80) {
-              return `rgb(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]})`;
-            } else if (avgPerformance >= 60) {
-              return `rgba(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]}, 0.7)`;
-            } else {
-              return `rgba(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]}, 0.4)`;
-            }
-          }
+              // Darken color if performance is poor
+              const avgPerformance = (dropRate + odoRate) / 2;
+              if (avgPerformance >= 80) {
+                return `rgb(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]})`;
+              } else if (avgPerformance >= 60) {
+                return `rgba(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]}, 0.7)`;
+              } else {
+                return `rgba(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]}, 0.4)`;
+              }
+            },
+          },
+          label: {
+            show: true,
+            position: "top",
+            formatter: function (params) {
+              const idx = params.dataIndex;
+              const dropRate = dropCompletion[idx];
+              return `${params.value} (${dropRate}%)`;
+            },
+          },
         },
-        label: {
-          show: true,
-          position: 'top',
-          formatter: function(params) {
-            const idx = params.dataIndex;
-            const dropRate = dropCompletion[idx];
-            return `${params.value} (${dropRate}%)`;
-          }
-        }
-      }],
-      grid: { left: 60, right: 20, top: 20, bottom: 80 }
+      ],
+      grid: { left: 60, right: 20, top: 20, bottom: 80 },
     };
 
     charts.driverPerformance.setOption(option);
@@ -397,135 +432,141 @@ const DashboardCharts = (function() {
   // Initialize gauge charts
   function initGauges(gaugeData) {
     // On-Time Rate Gauge
-    const onTimeDom = document.getElementById('onTimeGauge');
+    const onTimeDom = document.getElementById("onTimeGauge");
     if (onTimeDom) {
       charts.onTimeGauge = echarts.init(onTimeDom);
       charts.onTimeGauge.setOption({
-        series: [{
-          type: 'gauge',
-          startAngle: 180,
-          endAngle: 0,
-          min: 0,
-          max: 100,
-          splitNumber: 5,
-          axisLine: {
-            lineStyle: {
-              width: 20,
-              color: [
-                [0.5, '#ef4444'],
-                [0.8, '#f59e0b'],
-                [1, '#10b981']
-              ]
-            }
+        series: [
+          {
+            type: "gauge",
+            startAngle: 180,
+            endAngle: 0,
+            min: 0,
+            max: 100,
+            splitNumber: 5,
+            axisLine: {
+              lineStyle: {
+                width: 20,
+                color: [
+                  [0.5, "#ef4444"],
+                  [0.8, "#f59e0b"],
+                  [1, "#10b981"],
+                ],
+              },
+            },
+            pointer: { itemStyle: { color: "auto" } },
+            axisTick: { distance: -20, length: 8 },
+            splitLine: { distance: -20, length: 20 },
+            axisLabel: { distance: -40, formatter: "{value}%" },
+            detail: {
+              valueAnimation: true,
+              formatter: "{value}%",
+              color: "auto",
+              fontSize: 20,
+              offsetCenter: [0, "80%"],
+            },
+            title: {
+              offsetCenter: [0, "95%"],
+              fontSize: 12,
+            },
+            data: [{ value: gaugeData.on_time_rate, name: "On-Time" }],
           },
-          pointer: { itemStyle: { color: 'auto' } },
-          axisTick: { distance: -20, length: 8 },
-          splitLine: { distance: -20, length: 20 },
-          axisLabel: { distance: -40, formatter: '{value}%' },
-          detail: {
-            valueAnimation: true,
-            formatter: '{value}%',
-            color: 'auto',
-            fontSize: 20,
-            offsetCenter: [0, '80%']
-          },
-          title: {
-            offsetCenter: [0, '95%'],
-            fontSize: 12
-          },
-          data: [{ value: gaugeData.on_time_rate, name: 'On-Time' }]
-        }]
+        ],
       });
     }
 
     // Utilization Gauge
-    const utilDom = document.getElementById('utilizationGauge');
+    const utilDom = document.getElementById("utilizationGauge");
     if (utilDom) {
       charts.utilizationGauge = echarts.init(utilDom);
       charts.utilizationGauge.setOption({
-        series: [{
-          type: 'gauge',
-          startAngle: 180,
-          endAngle: 0,
-          min: 0,
-          max: 100,
-          splitNumber: 5,
-          axisLine: {
-            lineStyle: {
-              width: 20,
-              color: [
-                [0.5, '#ef4444'],
-                [0.8, '#f59e0b'],
-                [1, '#10b981']
-              ]
-            }
+        series: [
+          {
+            type: "gauge",
+            startAngle: 180,
+            endAngle: 0,
+            min: 0,
+            max: 100,
+            splitNumber: 5,
+            axisLine: {
+              lineStyle: {
+                width: 20,
+                color: [
+                  [0.5, "#ef4444"],
+                  [0.8, "#f59e0b"],
+                  [1, "#10b981"],
+                ],
+              },
+            },
+            pointer: { itemStyle: { color: "auto" } },
+            axisTick: { distance: -20, length: 8 },
+            splitLine: { distance: -20, length: 20 },
+            axisLabel: { distance: -40, formatter: "{value}%" },
+            detail: {
+              valueAnimation: true,
+              formatter: "{value}%",
+              color: "auto",
+              fontSize: 20,
+              offsetCenter: [0, "80%"],
+            },
+            title: {
+              offsetCenter: [0, "95%"],
+              fontSize: 12,
+            },
+            data: [{ value: gaugeData.utilization, name: "Utilization" }],
           },
-          pointer: { itemStyle: { color: 'auto' } },
-          axisTick: { distance: -20, length: 8 },
-          splitLine: { distance: -20, length: 20 },
-          axisLabel: { distance: -40, formatter: '{value}%' },
-          detail: {
-            valueAnimation: true,
-            formatter: '{value}%',
-            color: 'auto',
-            fontSize: 20,
-            offsetCenter: [0, '80%']
-          },
-          title: {
-            offsetCenter: [0, '95%'],
-            fontSize: 12
-          },
-          data: [{ value: gaugeData.utilization, name: 'Utilization' }]
-        }]
+        ],
       });
     }
 
     // Completeness Gauge
-    const completeDom = document.getElementById('completenessGauge');
+    const completeDom = document.getElementById("completenessGauge");
     if (completeDom) {
       charts.completenessGauge = echarts.init(completeDom);
       charts.completenessGauge.setOption({
-        series: [{
-          type: 'gauge',
-          startAngle: 180,
-          endAngle: 0,
-          min: 0,
-          max: 100,
-          splitNumber: 5,
-          axisLine: {
-            lineStyle: {
-              width: 20,
-              color: [
-                [0.5, '#ef4444'],
-                [0.85, '#f59e0b'],
-                [1, '#10b981']
-              ]
-            }
+        series: [
+          {
+            type: "gauge",
+            startAngle: 180,
+            endAngle: 0,
+            min: 0,
+            max: 100,
+            splitNumber: 5,
+            axisLine: {
+              lineStyle: {
+                width: 20,
+                color: [
+                  [0.5, "#ef4444"],
+                  [0.85, "#f59e0b"],
+                  [1, "#10b981"],
+                ],
+              },
+            },
+            pointer: { itemStyle: { color: "auto" } },
+            axisTick: { distance: -20, length: 8 },
+            splitLine: { distance: -20, length: 20 },
+            axisLabel: { distance: -40, formatter: "{value}%" },
+            detail: {
+              valueAnimation: true,
+              formatter: "{value}%",
+              color: "auto",
+              fontSize: 20,
+              offsetCenter: [0, "80%"],
+            },
+            title: {
+              offsetCenter: [0, "95%"],
+              fontSize: 12,
+            },
+            data: [{ value: gaugeData.data_completeness, name: "Complete" }],
           },
-          pointer: { itemStyle: { color: 'auto' } },
-          axisTick: { distance: -20, length: 8 },
-          splitLine: { distance: -20, length: 20 },
-          axisLabel: { distance: -40, formatter: '{value}%' },
-          detail: {
-            valueAnimation: true,
-            formatter: '{value}%',
-            color: 'auto',
-            fontSize: 20,
-            offsetCenter: [0, '80%']
-          },
-          title: {
-            offsetCenter: [0, '95%'],
-            fontSize: 12
-          },
-          data: [{ value: gaugeData.data_completeness, name: 'Complete' }]
-        }]
+        ],
       });
     }
   }
 
   // Resize all charts
   function resizeCharts() {
-    Object.values(charts).forEach(chart => {
+    Object.values(charts).forEach((chart) => {
       if (chart && chart.resize) {
         chart.resize();
       }
@@ -534,7 +575,7 @@ const DashboardCharts = (function() {
 
   // Destroy all charts
   function destroyCharts() {
-    Object.values(charts).forEach(chart => {
+    Object.values(charts).forEach((chart) => {
       if (chart && chart.dispose) {
         chart.dispose();
       }
@@ -553,6 +594,6 @@ const DashboardCharts = (function() {
     initDriverPerformanceChart,
     initGauges,
     resizeCharts,
-    destroyCharts
+    destroyCharts,
   };
 })();

@@ -11,12 +11,6 @@
 - Archive DB: Uses SQLAlchemy binds: `app.config['SQLALCHEMY_BINDS'] = {'archive': archive_db_url}`
 - SECRET_KEY should use environment variables (currently hardcoded in app.py:23)
 
-## Scheduler (APScheduler)
-- Requires Flask app context: `with app.app_context():`
-- Timezone: Use `pytz.timezone('Asia/Manila')` for Manila time
-- Prevent race conditions: Set `max_instances=1` in scheduler.add_job()
-- Handle IntegrityError for duplicate daily vehicle count records
-
 ## Database Models
 Core models: Vehicle, Manpower, Data, Schedule, Trip, TripDetail, Cluster, User, Odo, DailyVehicleCount, Backload, TimeLog, LCLSummary, LCLDetail, ArchiveLog
 
