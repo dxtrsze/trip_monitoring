@@ -19,10 +19,11 @@ class AIService:
             api_base: API base URL (e.g., 'http://localhost:11434/v1' for Ollama)
             model: Model name (e.g., 'gpt-4', 'llama3', 'mistral')
         """
-        # For local models, api_key can be a dummy string
-        # OpenAI client requires api_key parameter but local servers may not check it
-        if not api_key:
-            api_key = "dummy-key-for-local-model"
+        # For local models, use a valid-looking dummy key
+        # Some local servers still validate API key format
+        if not api_key or api_key == "no-api":
+            # Use sk- prefix to look like a valid OpenAI key
+            api_key = "sk-dummy-key-for-local-model"
 
         self.client = OpenAI(
             api_key=api_key,
