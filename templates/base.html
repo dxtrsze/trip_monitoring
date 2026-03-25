@@ -58,6 +58,8 @@
                             {% if current_user.position == 'admin' %}
                             <li><a class="dropdown-item" href="{{ url_for('add_schedule') }}">Add Schedule</a></li>
                             <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('ai_chat') }}"><i class="bi bi-robot"></i> AI Scheduling Assistant</a></li>
+                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('backload') }}">Backload Management</a></li>
                             {% endif %}
                             <li><a class="dropdown-item" href="{{ url_for('view_backload') }}">View Backload</a></li>
