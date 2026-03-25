@@ -1918,6 +1918,23 @@ def view_schedule():
     )
 
 
+@app.route("/ai")
+@login_required
+def ai_chat():
+    """AI Scheduling Assistant chat interface"""
+    if current_user.position != "admin":
+        flash("Access denied. Admin privileges required.", "error")
+        return redirect(url_for("view_schedule"))
+
+    # Check if API key is configured
+    api_key = os.environ.get("ZAI_API_KEY")
+    if not api_key or api_key == "your_api_key_here":
+        flash("ZAI_API_KEY not configured. Please set environment variable and restart.", "error")
+        return render_template("ai.html", configured=False)
+
+    return render_template("ai.html", configured=True)
+
+
 @app.route("/schedules/add", methods=["GET", "POST"])
 @login_required
 def add_schedule():
