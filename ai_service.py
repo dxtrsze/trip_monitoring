@@ -367,3 +367,90 @@ IMPORTANT CONSTRAINTS:
                 "content": f"Error communicating with AI service: {str(e)}",
                 "data": {"error_details": str(e)}
             }
+
+    def execute_schedule(self, proposal, admin_user_id):
+        """Execute a schedule proposal by creating database records
+
+        Args:
+            proposal: Proposal dict from build_schedule_proposal
+            admin_user_id: ID of admin user executing the schedule
+
+        Returns:
+            dict with success status and created schedule_id
+        """
+        try:
+            # Parse delivery_schedule
+            delivery_date = datetime.fromisoformat(proposal["delivery_schedule"]).date()
+
+            # Create Schedule
+            schedule = Schedule(
+                delivery_schedule=delivery_date,
+                plate_number=proposal["plate_number"],
+                capacity=proposal["capacity"],
+                actual=proposal["total_cbm"]
+            )
+            db.session.add(schedule)
+            db.session.flush()  # Get schedule.id
+
+            # Create Trips
+            for trip_data in proposal["trips"]:
+                trip = Trip(
+                    schedule_id=schedule.id,
+                    trip_number=trip_data["trip_number"],
+                    vehicle_id=trip_data["vehicle_id"],
+                    total_cbm=proposal["total_cbm"]
+                )
+                db.session.add(trip)
+                db.session.flush()  # Get trip.id
+
+                # Add drivers
+                for driver_id in trip_data.get("driver_ids", []):
+                    driver = db.session.get(Manpower, driver_id)
+                    if driver:
+                        trip.drivers.append(driver)
+
+                # Add assistants
+                for assistant_id in trip_data.get("assistant_ids", []):
+                    assistant = db.session.get(Manpower, assistant_id)
+                    if assistant:
+                        trip.assistants.append(assistant)
+
+                db.session.add(trip)
+                db.session.flush()
+
+                # Create TripDetails
+                for detail_data in trip_data["details"]:
+                    detail = TripDetail(
+                        trip_id=trip.id,
+                        branch_name_v2=detail_data["branch_name_v2"],
+                        data_ids=",".join(str(did) for did in detail_data["data_ids"]),
+                        total_cbm=detail_data["total_cbm"],
+                        total_ordered_qty=detail_data["total_ordered_qty"],
+                        total_delivered_qty=detail_data["total_ordered_qty"],
+                        area=detail_data["area"],
+                        status="Delivered"
+                    )
+                    db.session.add(detail)
+
+                    # Update Data status to Scheduled
+                    for data_id in detail_data["data_ids"]:
+                        data = db.session.get(Data, data_id)
+                        if data:
+                            data.status = "Scheduled"
+                            data.delivered_qty = data.ordered_qty
+
+            db.session.commit()
+
+            return {
+                "success": True,
+                "schedule_id": schedule.id,
+                "message": f"✓ Schedule created successfully for {proposal['delivery_schedule']}"
+            }
+
+        except Exception as e:
+            db.session.rollback()
+            return {
+                "success": False,
+                "error": str(e),
+                "message": f"Error creating schedule: {str(e)}"
+            }

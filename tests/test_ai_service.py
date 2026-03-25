@@ -297,3 +297,130 @@ def test_format_proposal_display(client):
         assert "15.5 CBM" in display
         assert "14.2 CBM" in display
         assert "Branch A" in display
+
+def test_execute_schedule(client):
+    """Test executing a schedule proposal"""
+    with app.app_context():
+        from models import Vehicle, Manpower, Data, Cluster, Schedule, Trip, TripDetail
+        from datetime import date
+
+        # Clean up any existing test data
+        existing_vehicle = Vehicle.query.filter_by(plate_number="EXEC123").first()
+        if existing_vehicle:
+            db.session.delete(existing_vehicle)
+            db.session.commit()
+
+        existing_driver = Manpower.query.filter_by(name="Test Driver").first()
+        if existing_driver:
+            db.session.delete(existing_driver)
+            db.session.commit()
+
+        existing_cluster = Cluster.query.filter_by(no="EXEC001").first()
+        if existing_cluster:
+            db.session.delete(existing_cluster)
+            db.session.commit()
+
+        existing_data = Data.query.filter_by(document_number="EXEC001").first()
+        if existing_data:
+            db.session.delete(existing_data)
+            db.session.commit()
+
+        # Create test vehicle
+        vehicle = Vehicle(
+            plate_number="EXEC123",
+            capacity=20.0,
+            status="Active",
+            dept="Logistics",
+            type="in-house"
+        )
+        db.session.add(vehicle)
+        db.session.flush()
+
+        # Create test driver
+        driver = Manpower(
+            name="Test Driver",
+            role="Driver"
+        )
+        db.session.add(driver)
+        db.session.flush()
+
+        # Create test cluster
+        cluster = Cluster(
+            no="EXEC001",
+            branch="Execute Branch",
+            area="North",
+            category="Test"
+        )
+        db.session.add(cluster)
+        db.session.flush()
+
+        # Create test data
+        data = Data(
+            type="ITR",
+            posting_date=date(2026, 3, 26),
+            document_number="EXEC001",
+            item_number="001",
+            ordered_qty=10,
+            delivered_qty=0.0,
+            branch_name_v2="Execute Branch",
+            due_date=date(2026, 3, 26),
+            status="Not Scheduled",
+            cbm=1.0
+        )
+        db.session.add(data)
+        db.session.commit()
+
+        service = AIService(
+            api_key="test",
+            api_base="https://test.com",
+            model="gpt-4"
+        )
+
+        proposal = {
+            "delivery_schedule": "2026-03-26",
+            "vehicle_id": vehicle.id,
+            "plate_number": "EXEC123",
+            "capacity": 20.0,
+            "total_cbm": 10.0,
+            "trips": [
+                {
+                    "trip_number": 1,
+                    "vehicle_id": vehicle.id,
+                    "driver_ids": [driver.id],
+                    "assistant_ids": [],
+                    "details": [
+                        {
+                            "branch_name_v2": "Execute Branch",
+                            "data_ids": [data.id],
+                            "total_cbm": 10.0,
+                            "total_ordered_qty": 10,
+                            "area": "North"
+                        }
+                    ]
+                }
+            ]
+        }
+
+        result = service.execute_schedule(proposal, admin_user_id=1)
+
+        assert result["success"] is True
+        assert "schedule_id" in result
+
+        # Verify schedule was created
+        schedule = Schedule.query.get(result["schedule_id"])
+        assert schedule is not None
+        assert schedule.delivery_schedule == date(2026, 3, 26)
+
+        # Verify data status was updated
+        updated_data = Data.query.get(data.id)
+        assert updated_data.status == "Scheduled"
+
+        # Cleanup
+        db.session.delete(updated_data)
+        TripDetail.query.delete()
+        Trip.query.delete()
+        db.session.delete(schedule)
+        db.session.delete(cluster)
+        db.session.delete(driver)
+        db.session.delete(vehicle)
+        db.session.commit()
