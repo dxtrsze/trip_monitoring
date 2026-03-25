@@ -32,6 +32,7 @@ from flask_login import (
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload, subqueryload
 
+from ai_service import AIService
 from models import (
     ArchiveLog,
     Backload,
@@ -1933,6 +1934,48 @@ def ai_chat():
         return render_template("ai.html", configured=False)
 
     return render_template("ai.html", configured=True)
+
+
+@app.route("/api/ai/chat", methods=["POST"])
+@login_required
+def ai_chat_api():
+    """Process chat messages and return AI responses"""
+    if current_user.position != "admin":
+        return jsonify({"error": "Access denied"}), 403
+
+    try:
+        data_request = request.get_json()
+        user_message = data_request.get("message", "").strip()
+        history = data_request.get("history", [])
+
+        if not user_message:
+            return jsonify({"error": "Message is required"}), 400
+
+        # Initialize AI service
+        api_key = os.environ.get("ZAI_API_KEY")
+        api_base = os.environ.get("ZAI_API_BASE", "https://api.z.ai/api/paas/v4")
+        model = os.environ.get("ZAI_MODEL", "gpt-4")
+
+        if not api_key:
+            return jsonify({
+                "type": "error",
+                "content": "ZAI_API_KEY not configured. Please set environment variable and restart.",
+                "data": {}
+            })
+
+        ai_service = AIService(api_key=api_key, api_base=api_base, model=model)
+
+        # Process message with AI
+        response = ai_service.chat(user_message, history)
+
+        return jsonify(response)
+
+    except Exception as e:
+        return jsonify({
+            "type": "error",
+            "content": f"Error processing message: {str(e)}",
+            "data": {"error": str(e)}
+        }), 500
 
 
 @app.route("/schedules/add", methods=["GET", "POST"])
