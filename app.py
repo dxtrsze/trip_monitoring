@@ -1978,6 +1978,43 @@ def ai_chat_api():
         }), 500
 
 
+@app.route("/api/ai/execute", methods=["POST"])
+@login_required
+def ai_execute_api():
+    """Execute approved schedule proposals"""
+    if current_user.position != "admin":
+        return jsonify({"error": "Access denied"}), 403
+
+    try:
+        data_request = request.get_json()
+        proposal = data_request.get("proposal")
+
+        if not proposal:
+            return jsonify({"error": "Proposal data is required"}), 400
+
+        # Initialize AI service
+        api_key = os.environ.get("ZAI_API_KEY")
+        api_base = os.environ.get("ZAI_API_BASE", "https://api.z.ai/api/paas/v4")
+        model = os.environ.get("ZAI_MODEL", "gpt-4")
+
+        ai_service = AIService(api_key=api_key, api_base=api_base, model=model)
+
+        # Execute schedule
+        result = ai_service.execute_schedule(proposal, admin_user_id=current_user.id)
+
+        if result["success"]:
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "message": f"Error executing schedule: {str(e)}"
+        }), 500
+
+
 @app.route("/schedules/add", methods=["GET", "POST"])
 @login_required
 def add_schedule():
