@@ -132,6 +132,79 @@ IMPORTANT CONSTRAINTS:
 - Respect vehicle capacity limits (up to 100%, can warn at 90%+)
 """
 
+    def query_vehicles(self, status="Active"):
+        """Query vehicles from database
+
+        Args:
+            status: Filter by status (default: 'Active')
+
+        Returns:
+            List of Vehicle objects
+        """
+        vehicles = Vehicle.query.filter_by(status=status).all()
+        return vehicles
+
+    def query_pending_deliveries(self, area, due_date):
+        """Query pending deliveries by area and due date
+
+        Args:
+            area: Cluster area (e.g., 'North', 'South')
+            due_date: Due date to filter Data records
+
+        Returns:
+            List of tuples: (branch_name_v2, data_ids, total_cbm, total_qty, area)
+        """
+        # Join Data with Cluster to filter by area
+        subq = (
+            db.session.query(
+                Data.branch_name_v2,
+                Data.id,
+                Data.cbm,
+                Data.ordered_qty,
+                Cluster.area
+            )
+            .join(Cluster, func.lower(Cluster.branch) == func.lower(Data.branch_name_v2))
+            .filter(Data.status == "Not Scheduled")
+            .filter(Data.due_date == due_date)
+            .filter(Cluster.area == area)
+            .all()
+        )
+
+        # Group by branch_name_v2
+        branch_groups = {}
+        for row in subq:
+            branch = row.branch_name_v2 or "Unknown"
+            if branch not in branch_groups:
+                branch_groups[branch] = {
+                    "branch_name_v2": branch,
+                    "data_ids": [],
+                    "total_cbm": 0.0,
+                    "total_qty": 0,
+                    "area": row.area
+                }
+
+            branch_groups[branch]["data_ids"].append(row.id)
+            branch_groups[branch]["total_cbm"] += (row.cbm * row.ordered_qty or 0.0)
+            branch_groups[branch]["total_qty"] += row.ordered_qty
+
+        return list(branch_groups.values())
+
+    def query_available_manpower(self, role=None):
+        """Query available drivers and assistants
+
+        Args:
+            role: Filter by role ('Driver' or 'Assistant'). If None, returns both.
+
+        Returns:
+            List of Manpower objects
+        """
+        query = Manpower.query
+
+        if role:
+            query = query.filter_by(role=role)
+
+        return query.order_by(Manpower.name).all()
+
     def chat(self, user_message, conversation_history=None):
         """Send conversation to LLM and get structured response
 
