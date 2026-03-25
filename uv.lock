@@ -411,6 +411,7 @@ dependencies = [
     { name = "gunicorn" },
     { name = "pandas" },
     { name = "python-dateutil" },
+    { name = "pytz" },
     { name = "sqlalchemy" },
 ]
 
@@ -423,6 +424,7 @@ requires-dist = [
     { name = "gunicorn", specifier = ">=25.1.0" },
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
+    { name = "pytz", specifier = ">=2025.2" },
     { name = "sqlalchemy", specifier = ">=2.0.44" },
 ]
 
