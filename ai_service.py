@@ -400,8 +400,6 @@ IMPORTANT CONSTRAINTS:
                     vehicle_id=trip_data["vehicle_id"],
                     total_cbm=proposal["total_cbm"]
                 )
-                db.session.add(trip)
-                db.session.flush()  # Get trip.id
 
                 # Add drivers
                 for driver_id in trip_data.get("driver_ids", []):
@@ -416,7 +414,7 @@ IMPORTANT CONSTRAINTS:
                         trip.assistants.append(assistant)
 
                 db.session.add(trip)
-                db.session.flush()
+                db.session.flush()  # Get trip.id
 
                 # Create TripDetails
                 for detail_data in trip_data["details"]:

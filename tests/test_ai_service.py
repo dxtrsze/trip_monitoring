@@ -12,6 +12,8 @@ def client():
         with app.app_context():
             db.create_all()
         yield client
+        with app.app_context():
+            db.drop_all()
 
 def test_ai_service_initialization():
     """Test that AIService initializes with OpenAI client"""
@@ -402,6 +404,10 @@ def test_execute_schedule(client):
         }
 
         result = service.execute_schedule(proposal, admin_user_id=1)
+
+        if not result.get("success"):
+            print(f"Error: {result.get('error')}")
+            print(f"Message: {result.get('message')}")
 
         assert result["success"] is True
         assert "schedule_id" in result
