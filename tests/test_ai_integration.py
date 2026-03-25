@@ -7,19 +7,19 @@ from datetime import date
 
 
 @pytest.fixture
-def client():
+def ai_client():
     """Create a test client with database setup"""
     app.config["TESTING"] = True
-    client = app.test_client()
+    ai_client = app.test_client()
 
     # Setup the application context and database
     with app.app_context():
         db.create_all()
-        yield client
+        yield ai_client
         db.drop_all()
 
 
-def test_full_scheduling_workflow(client):
+def test_full_scheduling_workflow(ai_client):
     """Test complete workflow from chat to schedule creation"""
     with app.app_context():
         # Setup: Create vehicle, driver, cluster, data
@@ -90,6 +90,29 @@ def test_full_scheduling_workflow(client):
         assert len(trip.details) == 1
         assert trip.details[0].branch_name_v2 == "Integration Branch"
 
+        # Verify: Complete Schedule → Trip → TripDetail relationship hierarchy
+        # Verify trip.vehicle relationship
+        assert trip.vehicle is not None
+        assert trip.vehicle.id == vehicle.id
+        assert trip.vehicle.plate_number == "FULL123"
+
+        # Verify trip.drivers and trip.assistants relationships
+        assert len(trip.drivers) == 1
+        assert trip.drivers[0].id == driver.id
+        assert trip.drivers[0].name == "Integration Driver"
+
+        # Verify trip_detail.trip relationship
+        trip_detail = trip.details[0]
+        assert trip_detail.trip is not None
+        assert trip_detail.trip.id == trip.id
+
+        # Verify all TripDetail fields
+        assert trip_detail.total_cbm is not None
+        assert trip_detail.total_ordered_qty is not None
+        assert trip_detail.total_delivered_qty is not None
+        assert trip_detail.branch_name_v2 == "Integration Branch"
+        assert trip_detail.area == "North"
+
         # Verify: Data status updated
         updated_data = Data.query.get(data.id)
         assert updated_data.status == "Scheduled"
@@ -106,7 +129,7 @@ def test_full_scheduling_workflow(client):
         db.session.commit()
 
 
-def test_api_chat_endpoint(client):
+def test_api_chat_endpoint(ai_client):
     """Test /api/ai/chat endpoint"""
     with app.app_context():
         # Login as admin
@@ -121,13 +144,13 @@ def test_api_chat_endpoint(client):
         db.session.commit()
 
         # Login
-        client.post("/login", data={
+        ai_client.post("/login", data={
             "email": "admin@test.com",
             "password": "password"
         })
 
         # Test chat endpoint
-        response = client.post("/api/ai/chat", json={
+        response = ai_client.post("/api/ai/chat", json={
             "message": "What vehicles are available?",
             "history": []
         })
