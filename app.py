@@ -53,6 +53,11 @@ from models import (
     trip_driver,
 )
 
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "your_secret_key_here"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///trip_monitoring.db"
