@@ -130,6 +130,10 @@ async function sendMessage() {
     showTypingIndicator();
 
     try {
+        // Add timeout controller
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minute timeout
+
         const response = await fetch('/api/ai/chat', {
             method: 'POST',
             headers: {
@@ -138,8 +142,15 @@ async function sendMessage() {
             body: JSON.stringify({
                 message: message,
                 history: conversationHistory
-            })
+            }),
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
 
         const data = await response.json();
 
@@ -165,7 +176,12 @@ async function sendMessage() {
 
     } catch (error) {
         hideTypingIndicator();
-        addMessage('Error: ' + error.message, false);
+        let errorMsg = 'Error: ' + error.message;
+        if (error.name === 'AbortError') {
+            errorMsg = 'Request timeout - the AI model took too long to respond. Your local model may be slow or not responding. Check the server logs for details.';
+        }
+        addMessage(errorMsg, false);
+        console.error('Chat error:', error);
     }
 }
 

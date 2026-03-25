@@ -339,14 +339,19 @@ IMPORTANT CONSTRAINTS:
         messages.append({"role": "user", "content": user_message})
 
         try:
+            # Add timeout for local models (they can be slower)
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 temperature=0.7,
-                max_tokens=2000
+                max_tokens=2000,
+                timeout=120.0  # 2 minute timeout for local models
             )
 
             response_text = response.choices[0].message.content.strip()
+
+            # Log the raw response for debugging
+            print(f"[AI DEBUG] Raw LLM response: {response_text[:500]}...")
 
             # Parse JSON response
             try:
@@ -359,15 +364,19 @@ IMPORTANT CONSTRAINTS:
                     response_text = response_text[:-3]
                 response_text = response_text.strip()
 
-                return json.loads(response_text)
-            except json.JSONDecodeError:
+                parsed = json.loads(response_text)
+                print(f"[AI DEBUG] Parsed JSON successfully: {parsed.get('type', 'unknown')}")
+                return parsed
+            except json.JSONDecodeError as e:
+                print(f"[AI ERROR] JSON decode error: {e}")
                 return {
                     "type": "error",
-                    "content": f"I couldn't understand my own response. Please try again.",
-                    "data": {"raw_response": response_text[:200]}
+                    "content": f"I couldn't parse my response as JSON. The model said:\n\n{response_text[:500]}",
+                    "data": {"raw_response": response_text[:500], "json_error": str(e)}
                 }
 
         except Exception as e:
+            print(f"[AI ERROR] API call failed: {e}")
             return {
                 "type": "error",
                 "content": f"Error communicating with AI service: {str(e)}",
