@@ -14,4 +14,14 @@ dependencies = [
     "apscheduler>=3.11.2",
     "gunicorn>=25.1.0",
     "pytz>=2025.2",
+    "openai>=2.29.0",
+    "python-dotenv>=1.2.2",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
+
+[tool.pytest.ini_options]
+pythonpath = "."
