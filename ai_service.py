@@ -205,6 +205,113 @@ IMPORTANT CONSTRAINTS:
 
         return query.order_by(Manpower.name).all()
 
+    def build_schedule_proposal(self, vehicle_id, area, due_date):
+        """Build a complete schedule proposal
+
+        Args:
+            vehicle_id: Vehicle ID to use
+            area: Cluster area to filter Data
+            due_date: Due date for Data items
+
+        Returns:
+            dict with proposal structure or None if error
+        """
+        # Get vehicle
+        vehicle = Vehicle.query.get(vehicle_id)
+        if not vehicle:
+            return None
+
+        # Get pending deliveries for this area and date
+        deliveries = self.query_pending_deliveries(area, due_date)
+
+        if not deliveries:
+            return {
+                "error": "no_deliveries",
+                "message": f"No unscheduled deliveries found for {area} area on {due_date}"
+            }
+
+        # Calculate total CBM
+        total_cbm = sum(d["total_cbm"] for d in deliveries)
+
+        # Check capacity
+        if total_cbm > vehicle.capacity:
+            return {
+                "error": "capacity_exceeded",
+                "message": f"Total CBM ({total_cbm:.1f}) exceeds vehicle capacity ({vehicle.capacity})",
+                "total_cbm": total_cbm,
+                "vehicle_capacity": vehicle.capacity
+            }
+
+        # Get available drivers and assistants
+        drivers = self.query_available_manpower(role="Driver")
+        assistants = self.query_available_manpower(role="Assistant")
+
+        # Build trip details
+        trip_details = []
+        for delivery in deliveries:
+            trip_details.append({
+                "branch_name_v2": delivery["branch_name_v2"],
+                "data_ids": delivery["data_ids"],
+                "total_cbm": delivery["total_cbm"],
+                "total_ordered_qty": delivery["total_qty"],
+                "area": delivery["area"]
+            })
+
+        # Build proposal
+        proposal = {
+            "delivery_schedule": due_date.isoformat(),
+            "vehicle_id": vehicle.id,
+            "plate_number": vehicle.plate_number,
+            "capacity": vehicle.capacity,
+            "total_cbm": total_cbm,
+            "utilization_pct": (total_cbm / vehicle.capacity * 100) if vehicle.capacity > 0 else 0,
+            "trips": [
+                {
+                    "trip_number": 1,
+                    "vehicle_id": vehicle.id,
+                    "driver_ids": [d.id for d in drivers[:1]],  # Assign first driver
+                    "assistant_ids": [a.id for a in assistants[:1]],  # Assign first assistant
+                    "details": trip_details
+                }
+            ]
+        }
+
+        return proposal
+
+    def format_proposal_display(self, proposal):
+        """Format proposal as human-readable text
+
+        Args:
+            proposal: Proposal dict from build_schedule_proposal
+
+        Returns:
+            Formatted string for chat display
+        """
+        lines = []
+        lines.append(f"✓ Found vehicle **{proposal['plate_number']}** (capacity: {proposal['capacity']} CBM)")
+        lines.append(f"✓ Total CBM: {proposal['total_cbm']:.1f} CBM ({proposal['utilization_pct']:.1f}% capacity)")
+
+        lines.append("\n**Proposed Schedule:**")
+        lines.append(f"• Date: {proposal['delivery_schedule']}")
+        lines.append(f"• Vehicle: {proposal['plate_number']}")
+
+        for trip in proposal['trips']:
+            lines.append(f"\n**Trip {trip['trip_number']}:**")
+            lines.append(f"  • Vehicle: {proposal['plate_number']}")
+
+            if trip.get('driver_ids'):
+                lines.append(f"  • Drivers: {len(trip['driver_ids'])} assigned")
+            if trip.get('assistant_ids'):
+                lines.append(f"  • Assistants: {len(trip['assistant_ids'])} assigned")
+
+            lines.append(f"  • Branches ({len(trip['details'])}):")
+            for detail in trip['details']:
+                lines.append(f"    - {detail['branch_name_v2']}: {detail['total_cbm']:.1f} CBM, {detail['total_ordered_qty']} qty")
+
+        lines.append("\n**Should I proceed?** (yes/no)")
+
+        return "\n".join(lines)
+
     def chat(self, user_message, conversation_history=None):
         """Send conversation to LLM and get structured response
 
