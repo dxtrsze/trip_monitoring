@@ -1928,9 +1928,10 @@ def ai_chat():
         return redirect(url_for("view_schedule"))
 
     # Check if API key is configured
+    # For local models, API key can be set to "no-api" or any dummy value
     api_key = os.environ.get("ZAI_API_KEY")
     if not api_key or api_key == "your_api_key_here":
-        flash("ZAI_API_KEY not configured. Please set environment variable and restart.", "error")
+        flash("ZAI_API_KEY not configured. Please set environment variable in .env file and restart.", "error")
         return render_template("ai.html", configured=False)
 
     return render_template("ai.html", configured=True)
@@ -1952,14 +1953,16 @@ def ai_chat_api():
             return jsonify({"error": "Message is required"}), 400
 
         # Initialize AI service
-        api_key = os.environ.get("ZAI_API_KEY")
+        api_key = os.environ.get("ZAI_API_KEY", "")
         api_base = os.environ.get("ZAI_API_BASE", "https://api.z.ai/api/paas/v4")
         model = os.environ.get("ZAI_MODEL", "gpt-4")
 
-        if not api_key:
+        # For local models, api_key can be empty or set to "no-api"
+        # Only show error if it's still the placeholder
+        if api_key == "your_api_key_here":
             return jsonify({
                 "type": "error",
-                "content": "ZAI_API_KEY not configured. Please set environment variable and restart.",
+                "content": "ZAI_API_KEY not configured. Please set environment variable in .env file and restart.",
                 "data": {}
             })
 
@@ -1993,7 +1996,7 @@ def ai_execute_api():
             return jsonify({"error": "Proposal data is required"}), 400
 
         # Initialize AI service
-        api_key = os.environ.get("ZAI_API_KEY")
+        api_key = os.environ.get("ZAI_API_KEY", "")
         api_base = os.environ.get("ZAI_API_BASE", "https://api.z.ai/api/paas/v4")
         model = os.environ.get("ZAI_MODEL", "gpt-4")
 

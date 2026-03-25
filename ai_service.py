@@ -15,10 +15,15 @@ class AIService:
         """Initialize the AI service with OpenAI client
 
         Args:
-            api_key: Z.AI API key from environment
-            api_base: Z.AI API base URL
-            model: Model name (e.g., 'gpt-4')
+            api_key: API key (can be dummy string for local models)
+            api_base: API base URL (e.g., 'http://localhost:11434/v1' for Ollama)
+            model: Model name (e.g., 'gpt-4', 'llama3', 'mistral')
         """
+        # For local models, api_key can be a dummy string
+        # OpenAI client requires api_key parameter but local servers may not check it
+        if not api_key:
+            api_key = "dummy-key-for-local-model"
+
         self.client = OpenAI(
             api_key=api_key,
             base_url=api_base
