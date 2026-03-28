@@ -12,3 +12,7 @@ wheels/
 # Database files
 instance/
 *.db
+
+# Environment variables
+.env
+.env.local

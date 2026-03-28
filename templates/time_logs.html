@@ -59,26 +59,26 @@
 <div class="card">
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-striped table-hover table-sm" style="font-size: 0.85rem;">
-                <thead class="table-dark">
+            <table class="table table-striped table-hover table-sm table-compact">
+                <thead>
                     <tr>
                         {% if current_user.position == 'admin' %}
-                        <th style="white-space: nowrap;">User</th>
+                        <th>User</th>
                         {% endif %}
-                        <th style="white-space: nowrap;">Date</th>
-                        <th style="white-space: nowrap;">Time In</th>
-                        <th style="white-space: nowrap;">Time Out</th>
-                        <th style="white-space: nowrap;">Hours Rendered</th>
+                        <th>Date</th>
+                        <th>Time In</th>
+                        <th>Time Out</th>
+                        <th>Hours Rendered</th>
                         {% if current_user.position == 'admin' %}
-                        <th style="white-space: nowrap;">Daily Rate</th>
-                        <th style="white-space: nowrap;">Overtime (hrs)</th>
-                        <th style="white-space: nowrap;">Regular Pay</th>
-                        <th style="white-space: nowrap;">OT Pay</th>
-                        <th style="white-space: nowrap;">Total Pay</th>
+                        <th>Daily Rate</th>
+                        <th>Overtime (hrs)</th>
+                        <th>Regular Pay</th>
+                        <th>OT Pay</th>
+                        <th>Total Pay</th>
                         {% endif %}
-                        <th style="white-space: nowrap;">Schedule</th>
+                        <th>Schedule</th>
                         {% if current_user.position == 'admin' %}
-                        <th style="white-space: nowrap;">Actions</th>
+                        <th>Actions</th>
                         {% endif %}
                     </tr>
                 </thead>

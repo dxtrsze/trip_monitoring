@@ -19,9 +19,7 @@
   #deliveryCountsChart,
   #fuelEfficiencyChart,
   #truckUtilizationChart,
-  #vehicleUtilizationChart,
-  #branchFrequencyChart,
-  #driverPerformanceChart {
+  #vehicleUtilizationChart {
     /* !important needed to override inline ECharts styles */
     height: 250px !important;
   }
@@ -31,9 +29,7 @@
   #deliveryCountsChart,
   #fuelEfficiencyChart,
   #truckUtilizationChart,
-  #vehicleUtilizationChart,
-  #branchFrequencyChart,
-  #driverPerformanceChart {
+  #vehicleUtilizationChart {
     /* !important needed to override inline ECharts styles */
     height: 200px !important;
   }
@@ -41,20 +37,6 @@
   /* Hide secondary y-axis on mobile */
   .chart-secondary-axis {
     display: none;
-  }
-
-  /* Adjust action bar for mobile */
-  .navbar-nav {
-    position: fixed;
-    top: 56px;
-    left: 0;
-    right: 0;
-    background: white;
-    z-index: 1000;
-    padding: 10px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    max-height: calc(100vh - 56px);
-    overflow-y: auto;
   }
 
   /* Stack gauge charts on mobile - scoped to Performance Metrics section */

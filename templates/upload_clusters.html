@@ -4,53 +4,55 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Upload Clusters CSV</h1>
-    <a href="{{ url_for('manage_clusters') }}" class="btn btn-secondary">Back to Clusters</a>
+    <h1><i class="bi bi-cloud-upload"></i> Upload Clusters CSV</h1>
+    <a href="{{ url_for('download_clusters_template') }}" class="btn btn-outline-primary">
+        <i class="bi bi-download"></i> Download Template
+    </a>
 </div>
 
 <div class="alert alert-warning">
     <strong>Warning:</strong> Uploading a new CSV file will delete all existing cluster data and replace it with the uploaded data.
 </div>
 
-<div class="card">
+<div class="card mt-4">
     <div class="card-body">
         <form method="post" enctype="multipart/form-data">
             <div class="mb-3">
                 <label for="file" class="form-label">Select CSV File</label>
                 <input type="file" class="form-control" id="file" name="file" accept=".csv" required>
+                <div class="form-text">
+                    Upload a CSV file containing cluster records. Use the template to ensure correct format.
+                </div>
             </div>
-
-            <div class="mb-3">
-                <h5>Expected CSV Format:</h5>
-                <p>The CSV file should have the following columns:</p>
-                <ul>
-                    <li><strong>No.</strong> - Cluster number (required)</li>
-                    <li><strong>Weekly Schedule</strong> - Weekly schedule</li>
-                    <li><strong>Delivered By</strong> - Delivery person/team</li>
-                    <li><strong>Location</strong> - Location</li>
-                    <li><strong>Category</strong> - Category</li>
-                    <li><strong>Area</strong> - Area</li>
-                    <li><strong>Branch</strong> - Branch</li>
-                    <li><strong>Frequency</strong> - Frequency</li>
-                    <li><strong>Frequency Count</strong> - Frequency count</li>
-                    <li><strong>TL</strong> - Team Lead</li>
-                    <li><strong>Delivery Mode</strong> - Delivery mode</li>
-                    <li><strong>Active Branches</strong> - Active branches</li>
-                </ul>
-            </div>
-
-            <button type="submit" class="btn btn-primary">Upload CSV</button>
+            <button type="submit" class="btn btn-primary">Upload</button>
+            <a href="{{ url_for('manage_clusters') }}" class="btn btn-secondary">Cancel</a>
         </form>
     </div>
 </div>
 
 <div class="card mt-4">
     <div class="card-header">
-        <h5>Download Template</h5>
+        <h5>CSV Format Requirements</h5>
     </div>
     <div class="card-body">
-        <p>Download a CSV template to get started with the correct format.</p>
-        <a href="{{ url_for('download_clusters_template') }}" class="btn btn-success">Download Template</a>
+        <p>Your CSV file must include the following <strong>exact column headers</strong> (case-sensitive):</p>
+        <ul>
+            <li><code>No.</code> – Cluster number (required)</li>
+            <li><code>Weekly Schedule</code> – Weekly schedule</li>
+            <li><code>Delivered By</code> – Delivery person/team</li>
+            <li><code>Location</code> – Location</li>
+            <li><code>Category</code> – Category</li>
+            <li><code>Area</code> – Area</li>
+            <li><code>Branch</code> – Branch</li>
+            <li><code>Frequency</code> – Frequency</li>
+            <li><code>Frequency Count</code> – Frequency count</li>
+            <li><code>TL</code> – Team Lead</li>
+            <li><code>Delivery Mode</code> – Delivery mode</li>
+            <li><code>Active Branches</code> – Active branches</li>
+        </ul>
+        <p class="text-muted">
+            ⚠️ <strong>Important:</strong> Use the <a href="{{ url_for('download_clusters_template') }}">downloadable template</a> to avoid formatting errors.
+        </p>
     </div>
 </div>
 {% endblock %}

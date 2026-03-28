@@ -4,6 +4,7 @@
   'use strict';
 
   let lastUpdateTime = null;
+  let autoRefreshInterval = null;
 
   // Initialize dashboard on page load
   async function initDashboard() {
@@ -41,8 +42,6 @@
       DashboardCharts.initFuelEfficiencyChart(data.trends.fuel_efficiency);
       DashboardCharts.initTruckUtilizationChart(data.trends.truck_utilization);
       DashboardCharts.initVehicleUtilizationChart(todayComparisons.vehicle_utilization);
-      DashboardCharts.initBranchFrequencyChart(data.comparisons.branch_frequency);
-      DashboardCharts.initDriverPerformanceChart(data.comparisons.driver_performance);
       DashboardCharts.initGauges(data.gauges);
 
       // Set date range inputs
@@ -102,8 +101,6 @@
       DashboardCharts.initFuelEfficiencyChart(data.trends.fuel_efficiency);
       DashboardCharts.initTruckUtilizationChart(data.trends.truck_utilization);
       DashboardCharts.initVehicleUtilizationChart(todayComparisons.vehicle_utilization);
-      DashboardCharts.initBranchFrequencyChart(data.comparisons.branch_frequency);
-      DashboardCharts.initDriverPerformanceChart(data.comparisons.driver_performance);
       DashboardCharts.initGauges(data.gauges);
 
       // Update timestamp
@@ -173,6 +170,40 @@
     if (refreshBtn) {
       refreshBtn.addEventListener('click', refreshDashboard);
     }
+
+    // Auto-refresh toggle
+    const autoRefreshToggle = document.getElementById('autoRefreshToggle');
+    if (autoRefreshToggle) {
+      autoRefreshToggle.addEventListener('change', function () {
+        if (this.checked) {
+          autoRefreshInterval = setInterval(refreshDashboard, 300000); // 5 min
+        } else {
+          clearInterval(autoRefreshInterval);
+          autoRefreshInterval = null;
+        }
+      });
+    }
+
+    // Date preset buttons
+    document.querySelectorAll('.date-presets .btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        // Remove active from all
+        document.querySelectorAll('.date-presets .btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+
+        const days = parseInt(this.dataset.days);
+        const manilaNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+        const end = new Date(manilaNow);
+        const start = new Date(manilaNow);
+        start.setDate(start.getDate() - (days - 1));
+
+        document.getElementById('rangeStartDate').value = start.toISOString().split('T')[0];
+        document.getElementById('rangeEndDate').value = end.toISOString().split('T')[0];
+
+        // Trigger range refresh
+        document.getElementById('rangeRefreshBtn').click();
+      });
+    });
 
     // KPI Range Apply button handler
     const rangeRefreshBtn = document.getElementById('rangeRefreshBtn');

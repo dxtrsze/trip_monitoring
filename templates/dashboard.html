@@ -1,27 +1,60 @@
-{% extends "base.html" %} {% block title %}Dashboard{% endblock %} {% block
+{% extends "base.html" %} {% block title %}Dashboard - Trip Monitoring System{% endblock %} {% block
 styles %}
 <link
     rel="stylesheet"
     href="{{ url_for('static', filename='css/dashboard.css') }}"
 />
+<style>
+    .dashboard-header {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        color: #fff;
+        padding: 1.25rem 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .dashboard-header small { color: #94a3b8; }
+    .auto-refresh-toggle { cursor: pointer; user-select: none; }
+    .auto-refresh-toggle .form-check-input { cursor: pointer; }
+    .section-card {
+        border: none;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        margin-bottom: 1.5rem;
+    }
+    .section-card .card-header {
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 0.75rem 1rem;
+    }
+    .section-card .card-header h5 {
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #334155;
+    }
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1e293b;
+        border-left: 4px solid #3b82f6;
+        padding-left: 0.75rem;
+    }
+    .date-presets .btn { font-size: 0.75rem; padding: 0.2rem 0.6rem; }
+    .date-presets .btn.active {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+        color: #fff;
+    }
+</style>
 {% endblock %} {% block content %}
-<!-- Refresh Button -->
-<div class="container-fluid mt-3 mb-3">
-    <div class="d-flex justify-content-end align-items-center">
-        <button id="refreshBtn" class="btn btn-primary btn-sm">
-            <i class="bi bi-arrow-clockwise"></i> Refresh
-        </button>
-        <small id="lastUpdated" class="ms-3">Loading...</small>
-    </div>
-</div>
-
-<!-- Error Banner (hidden by default) -->
+<!-- Error Banner (hidden by default, fixed top) -->
 <div
     id="errorBanner"
-    class="alert alert-danger alert-dismissible fade show"
+    class="alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x"
     role="alert"
-    style="display: none"
+    style="display: none; z-index: 1050; min-width: 400px; max-width: 700px"
 >
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
     <span id="errorMessage"></span>
     <button
         type="button"
@@ -31,24 +64,52 @@ styles %}
     ></button>
 </div>
 
-<!-- KPI Cards Container -->
-<div id="kpiContainer" class="container-fluid mt-4">
-    <h2 class="mb-4">Key Performance Indicators</h2>
+<!-- Dashboard Header -->
+<div class="container-fluid mt-3">
+    <div class="dashboard-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h4 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>Dashboard</h4>
+            <small id="lastUpdated">Loading...</small>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <div class="auto-refresh-toggle d-flex align-items-center gap-1">
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="autoRefreshToggle">
+                    <label class="form-check-label" for="autoRefreshToggle" style="font-size: 0.8rem; color: #94a3b8">
+                        Auto-refresh
+                    </label>
+                </div>
+            </div>
+            <button id="refreshBtn" class="btn btn-light btn-sm">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards Container (All-Time) -->
+<div id="kpiContainer" class="container-fluid">
+    <div class="d-flex align-items-center mb-3">
+        <h2 class="section-title mb-0">Key Performance Indicators</h2>
+        <small class="text-muted ms-3">All-time summary</small>
+    </div>
     <div class="row" id="kpiCards">
         <!-- KPI cards will be dynamically inserted here -->
     </div>
 </div>
 
 <!-- Charts Container -->
-<div class="container-fluid mt-5">
-    <h2 class="mb-4">Trends & Comparisons</h2>
+<div class="container-fluid">
+    <div class="d-flex align-items-center mb-3">
+        <h2 class="section-title mb-0">Trends & Comparisons</h2>
+    </div>
     <div class="row">
         <!-- Trend Charts Column -->
         <div class="col-lg-7">
-            <div class="card mb-4">
+            <div class="card section-card">
                 <div class="card-header">
                     <h5>
-                        <i class="bi bi-graph-up"></i> Daily Delivery Counts
+                        <i class="bi bi-graph-up me-1"></i> Daily Delivery Counts
                     </h5>
                 </div>
                 <div class="card-body">
@@ -56,10 +117,10 @@ styles %}
                 </div>
             </div>
 
-            <div class="card mb-4">
+            <div class="card section-card">
                 <div class="card-header">
                     <h5>
-                        <i class="bi bi-fuel-pump"></i> Fuel Efficiency & Cost
+                        <i class="bi bi-fuel-pump me-1"></i> Fuel Efficiency
                     </h5>
                 </div>
                 <div class="card-body">
@@ -67,9 +128,9 @@ styles %}
                 </div>
             </div>
 
-            <div class="card mb-4">
+            <div class="card section-card">
                 <div class="card-header">
-                    <h5><i class="bi bi-truck"></i> Truck Utilization</h5>
+                    <h5><i class="bi bi-truck me-1"></i> Truck Utilization</h5>
                 </div>
                 <div class="card-body">
                     <div id="truckUtilizationChart" style="height: 300px"></div>
@@ -79,10 +140,10 @@ styles %}
 
         <!-- Comparison Charts Column -->
         <div class="col-lg-5">
-            <div class="card mb-4">
+            <div class="card section-card">
                 <div class="card-header">
                     <h5>
-                        <i class="bi bi-bar-chart"></i> Today's Vehicle
+                        <i class="bi bi-bar-chart me-1"></i> Today's Vehicle
                         Utilization
                     </h5>
                 </div>
@@ -99,13 +160,15 @@ styles %}
 </div>
 
 <!-- Performance Gauges -->
-<div class="container-fluid mt-5">
-    <h2 class="mb-4">Performance Metrics</h2>
+<div class="container-fluid">
+    <div class="d-flex align-items-center mb-3">
+        <h2 class="section-title mb-0">Performance Metrics</h2>
+    </div>
     <div class="row">
         <div class="col-md-4">
-            <div class="card">
+            <div class="card section-card">
                 <div class="card-header">
-                    <h5>On-Time Delivery Rate</h5>
+                    <h5><i class="bi bi-clock-history me-1"></i> On-Time Delivery Rate</h5>
                 </div>
                 <div class="card-body">
                     <div id="onTimeGauge" style="height: 250px"></div>
@@ -113,9 +176,9 @@ styles %}
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card">
+            <div class="card section-card">
                 <div class="card-header">
-                    <h5>Truck Utilization</h5>
+                    <h5><i class="bi bi-truck me-1"></i> Truck Utilization</h5>
                 </div>
                 <div class="card-body">
                     <div id="utilizationGauge" style="height: 250px"></div>
@@ -123,9 +186,9 @@ styles %}
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card">
+            <div class="card section-card">
                 <div class="card-header">
-                    <h5>Delivery Data Completeness</h5>
+                    <h5><i class="bi bi-file-check me-1"></i> Delivery Data Completeness</h5>
                 </div>
                 <div class="card-body">
                     <div id="completenessGauge" style="height: 250px"></div>
@@ -136,11 +199,14 @@ styles %}
 </div>
 
 <!-- KPI Daily (Today's Metrics) -->
-<div class="container-fluid mt-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0">KPI Daily</h2>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center">
+            <h2 class="section-title mb-0">KPI Daily</h2>
+            <span class="badge bg-primary ms-3" style="font-size: 0.7rem">TODAY</span>
+        </div>
         <small class="text-muted"
-            >Today's performance metrics (Manila time)</small
+            ><i class="bi bi-clock me-1"></i>Manila time</small
         >
     </div>
     <div class="row" id="kpiDailyCards">
@@ -149,33 +215,40 @@ styles %}
 </div>
 
 <!-- KPI Range (Custom Date Range) -->
-<div class="container-fluid mt-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0">KPI Range</h2>
-        <div class="d-flex align-items-center gap-2">
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+        <h2 class="section-title mb-0">KPI Range</h2>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="date-presets btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary" data-days="7">7d</button>
+                <button class="btn btn-outline-secondary" data-days="14">14d</button>
+                <button class="btn btn-outline-secondary" data-days="30">30d</button>
+                <button class="btn btn-outline-secondary" data-days="90">90d</button>
+            </div>
             <input
                 type="date"
                 id="rangeStartDate"
                 class="form-control form-control-sm"
-                style="width: 150px"
+                style="width: 140px"
             />
-            <span class="text-muted">to</span>
+            <span class="text-muted">&mdash;</span>
             <input
                 type="date"
                 id="rangeEndDate"
                 class="form-control form-control-sm"
-                style="width: 150px"
+                style="width: 140px"
             />
-            <button id="rangeRefreshBtn" class="btn btn-primary btn-sm ms-2">
-                <i class="bi bi-arrow-clockwise"></i> Apply Range
+            <button id="rangeRefreshBtn" class="btn btn-primary btn-sm">
+                <i class="bi bi-arrow-clockwise"></i> Apply
             </button>
-            <small class="text-muted ms-2">Max 90 days</small>
         </div>
     </div>
     <div class="row" id="kpiRangeCards">
         <!-- KPI cards will be dynamically inserted here -->
     </div>
 </div>
+
+<div class="mb-5"></div>
 
 <!-- Load dashboard JavaScript modules -->
 <script

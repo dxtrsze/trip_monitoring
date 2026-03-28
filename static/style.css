@@ -98,7 +98,7 @@ body {
     border-radius: 16px;
     box-shadow: 0 4px 20px rgba(26, 83, 92, 0.08);
     margin-bottom: 1.5rem;
-    background-color: var(--white)
+    background-color: var(--white);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -248,35 +248,37 @@ body {
     font-weight: 600;
     padding: 0.5rem 0.75rem;
     border-radius: 8px;
-    color: #1A535C !important;
 }
 
-.bg-primary {
+/* Status badge colors using design palette */
+.badge.bg-success {
     background-color: var(--primary) !important;
+    color: var(--white) !important;
 }
 
-.bg-success {
-    background-color: var(--primary) !important;
+.badge.bg-primary {
+    background-color: var(--secondary) !important;
+    color: var(--white) !important;
 }
 
-.bg-danger {
+.badge.bg-danger {
     background-color: var(--accent) !important;
+    color: var(--white) !important;
 }
 
-.bg-info {
-    background-color: var(--primary) !important;
-}
-
-.bg-warning {
+.badge.bg-warning {
     background-color: #FFE66D !important;
+    color: var(--secondary) !important;
 }
 
-.bg-secondary {
-    background-color: var(--gray-light) !important;
+.badge.bg-info {
+    background-color: var(--primary) !important;
+    color: var(--white) !important;
 }
 
-.bg-light {
-    background-color: var(--background) !important;
+.badge.bg-secondary {
+    background-color: var(--gray-medium) !important;
+    color: var(--white) !important;
 }
 
 /* Alerts */
@@ -486,6 +488,15 @@ h2 {
     border-bottom-color: var(--primary);
 }
 
+/* Compact Data Table */
+.table-compact {
+    font-size: 0.85rem;
+}
+
+.table-compact thead th {
+    white-space: nowrap;
+}
+
 /* Responsive Design */
 @media (max-width: 767.98px) {
     .table-responsive {
@@ -510,25 +521,25 @@ h2 {
     }
 }
 
-/* Utility Classes */
-.text-primary {
+/* Utility Classes - scoped to avoid breaking Bootstrap text colors in card headers */
+.table .text-primary,
+.navbar .text-primary {
     color: var(--primary) !important;
 }
 
-.text-success {
+.table .text-success,
+.navbar .text-success {
     color: var(--primary) !important;
 }
 
-.text-danger {
+.table .text-danger,
+.navbar .text-danger {
     color: var(--accent) !important;
 }
 
-.text-info {
+.table .text-info,
+.navbar .text-info {
     color: var(--primary) !important;
-}
-
-.text-secondary {
-    color: var(--gray-medium) !important;
 }
 
 /* Form Validation Styles */
