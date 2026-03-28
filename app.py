@@ -32,7 +32,7 @@ from flask_login import (
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload, subqueryload
 
-from ai_service import AIService
+
 from models import (
     ArchiveLog,
     Backload,
@@ -957,8 +957,19 @@ def manage_vehicles():
     if current_user.position != "admin":
         flash("Access denied. Admin privileges required.", "error")
         return redirect(url_for("view_schedule"))
-    vehicles = Vehicle.query.order_by(Vehicle.plate_number).all()
-    return render_template("manage_vehicles.html", vehicles=vehicles)
+    search = request.args.get("search", "")
+    if search:
+        vehicles = Vehicle.query.filter(
+            db.or_(
+                Vehicle.plate_number.ilike(f"%{search}%"),
+                Vehicle.dept.ilike(f"%{search}%"),
+                Vehicle.type.ilike(f"%{search}%"),
+                Vehicle.status.ilike(f"%{search}%"),
+            )
+        ).order_by(Vehicle.plate_number).all()
+    else:
+        vehicles = Vehicle.query.order_by(Vehicle.plate_number).all()
+    return render_template("manage_vehicles.html", vehicles=vehicles, search=search)
 
 
 @app.route("/vehicles/add", methods=["POST"])
@@ -1161,8 +1172,23 @@ def manage_clusters():
     if current_user.position != "admin":
         flash("Access denied. Admin privileges required.", "error")
         return redirect(url_for("view_schedule"))
-    clusters = Cluster.query.all()
-    return render_template("manage_clusters.html", clusters=clusters)
+    search = request.args.get("search", "")
+    if search:
+        clusters = Cluster.query.filter(
+            db.or_(
+                Cluster.no.ilike(f"%{search}%"),
+                Cluster.branch.ilike(f"%{search}%"),
+                Cluster.area.ilike(f"%{search}%"),
+                Cluster.location.ilike(f"%{search}%"),
+                Cluster.tl.ilike(f"%{search}%"),
+                Cluster.delivered_by.ilike(f"%{search}%"),
+                Cluster.category.ilike(f"%{search}%"),
+                Cluster.active_branches.ilike(f"%{search}%"),
+            )
+        ).all()
+    else:
+        clusters = Cluster.query.all()
+    return render_template("manage_clusters.html", clusters=clusters, search=search)
 
 
 @app.route("/clusters/add", methods=["POST"])
@@ -1822,19 +1848,18 @@ def view_schedule():
     # Get today's date
     today = datetime.now().date()
 
+    # Pagination
+    page = request.args.get("page", 1, type=int)
+    per_page = 10  # Show 10 schedules per page
+
     if current_user.position == "admin":
         # Admins see all schedules (past, today, and future)
-        # Use eager loading to prevent N+1 queries
-        schedules = (
-            Schedule.query.options(
-                subqueryload(Schedule.trips).joinedload(Trip.vehicle),
-                subqueryload(Schedule.trips).subqueryload(Trip.drivers),
-                subqueryload(Schedule.trips).subqueryload(Trip.assistants),
-                subqueryload(Schedule.trips).subqueryload(Trip.details),
-            )
-            .order_by(Schedule.delivery_schedule.desc())
-            .all()
-        )
+        query = Schedule.query.options(
+            subqueryload(Schedule.trips).joinedload(Trip.vehicle),
+            subqueryload(Schedule.trips).subqueryload(Trip.drivers),
+            subqueryload(Schedule.trips).subqueryload(Trip.assistants),
+            subqueryload(Schedule.trips).subqueryload(Trip.details),
+        ).order_by(Schedule.delivery_schedule.desc())
 
     else:
         # Regular users only see schedules where they are assigned
@@ -1878,8 +1903,7 @@ def view_schedule():
                     + [trip.schedule_id for trip in prior_incomplete_trips]
                 )
             )
-            # Use eager loading to prevent N+1 queries
-            schedules = (
+            query = (
                 Schedule.query.options(
                     subqueryload(Schedule.trips).joinedload(Trip.vehicle),
                     subqueryload(Schedule.trips).subqueryload(Trip.drivers),
@@ -1888,11 +1912,79 @@ def view_schedule():
                 )
                 .filter(Schedule.id.in_(all_schedule_ids))
                 .order_by(Schedule.delivery_schedule.desc())
-                .all()
             )
         else:
             # User has no associated manpower entry - show no schedules
-            schedules = []
+            query = Schedule.query.filter(Schedule.id == -1)
+
+    # Search filtering (in-memory since schedules have eager-loaded relations)
+    search = request.args.get("search", "")
+    if search:
+        # Fetch all matching schedules then filter in-memory
+        all_schedules = query.all()
+
+        search_lower = search.lower()
+        filtered = []
+        for schedule in all_schedules:
+            # Check schedule date
+            if search_lower in schedule.delivery_schedule.strftime("%Y-%m-%d").lower():
+                filtered.append(schedule)
+                continue
+            # Check fields within trips
+            match = False
+            for trip in schedule.trips:
+                if search_lower in trip.vehicle.plate_number.lower():
+                    match = True
+                    break
+                if any(search_lower in d.name for d in trip.drivers):
+                    match = True
+                    break
+                if any(search_lower in (a.name or "").lower() for a in trip.assistants):
+                    match = True
+                    break
+                if any(search_lower in d.branch_name_v2.lower() for d in trip.details):
+                    match = True
+                    break
+            if match:
+                filtered.append(schedule)
+
+        # Manual pagination for filtered results
+        total = len(filtered)
+        start = (page - 1) * per_page
+        end = start + per_page
+        schedules = filtered[start:end]
+
+        # Build a simple pagination-like object for the template
+        class SimplePagination:
+            def __init__(self, items, page, per_page, total):
+                self.items = items
+                self.page = page
+                self.per_page = per_page
+                self.total = total
+                self.pages = (total + per_page - 1) // per_page if total > 0 else 0
+                self.has_prev = page > 1
+                self.has_next = page < self.pages
+                self.prev_num = page - 1
+                self.next_num = page + 1
+
+            def iter_pages(self, left_edge=1, right_edge=1, left_current=2, right_current=2):
+                last = 0
+                for i in range(1, self.pages + 1):
+                    if (
+                        i <= left_edge
+                        or i > self.pages - right_edge
+                        or (i >= self.page - left_current and i <= self.page + right_current)
+                    ):
+                        if last + 1 != i:
+                            yield None
+                        yield i
+                        last = i
+
+        pagination = SimplePagination(schedules, page, per_page, total)
+    else:
+        # No search - use database-level pagination
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        schedules = pagination.items
 
     # Sort trip details by delivery_order for each trip (NULL values last)
     for schedule in schedules:
@@ -1916,106 +2008,10 @@ def view_schedule():
         today=today,
         executive_vehicles=executive_vehicles,
         vehicles=vehicles,
+        search=search,
+        pagination=pagination,
     )
 
-
-@app.route("/ai")
-@login_required
-def ai_chat():
-    """AI Scheduling Assistant chat interface"""
-    if current_user.position != "admin":
-        flash("Access denied. Admin privileges required.", "error")
-        return redirect(url_for("view_schedule"))
-
-    # Check if API key is configured
-    # For local models, API key can be set to "no-api" or any dummy value
-    api_key = os.environ.get("ZAI_API_KEY")
-    if not api_key or api_key == "your_api_key_here":
-        flash("ZAI_API_KEY not configured. Please set environment variable in .env file and restart.", "error")
-        return render_template("ai.html", configured=False)
-
-    return render_template("ai.html", configured=True)
-
-
-@app.route("/api/ai/chat", methods=["POST"])
-@login_required
-def ai_chat_api():
-    """Process chat messages and return AI responses"""
-    if current_user.position != "admin":
-        return jsonify({"error": "Access denied"}), 403
-
-    try:
-        data_request = request.get_json()
-        user_message = data_request.get("message", "").strip()
-        history = data_request.get("history", [])
-
-        if not user_message:
-            return jsonify({"error": "Message is required"}), 400
-
-        # Initialize AI service
-        api_key = os.environ.get("ZAI_API_KEY", "")
-        api_base = os.environ.get("ZAI_API_BASE", "https://api.z.ai/api/paas/v4")
-        model = os.environ.get("ZAI_MODEL", "gpt-4")
-
-        # For local models, api_key can be empty or set to "no-api"
-        # Only show error if it's still the placeholder
-        if api_key == "your_api_key_here":
-            return jsonify({
-                "type": "error",
-                "content": "ZAI_API_KEY not configured. Please set environment variable in .env file and restart.",
-                "data": {}
-            })
-
-        ai_service = AIService(api_key=api_key, api_base=api_base, model=model)
-
-        # Process message with AI
-        response = ai_service.chat(user_message, history)
-
-        return jsonify(response)
-
-    except Exception as e:
-        return jsonify({
-            "type": "error",
-            "content": f"Error processing message: {str(e)}",
-            "data": {"error": str(e)}
-        }), 500
-
-
-@app.route("/api/ai/execute", methods=["POST"])
-@login_required
-def ai_execute_api():
-    """Execute approved schedule proposals"""
-    if current_user.position != "admin":
-        return jsonify({"error": "Access denied"}), 403
-
-    try:
-        data_request = request.get_json()
-        proposal = data_request.get("proposal")
-
-        if not proposal:
-            return jsonify({"error": "Proposal data is required"}), 400
-
-        # Initialize AI service
-        api_key = os.environ.get("ZAI_API_KEY", "")
-        api_base = os.environ.get("ZAI_API_BASE", "https://api.z.ai/api/paas/v4")
-        model = os.environ.get("ZAI_MODEL", "gpt-4")
-
-        ai_service = AIService(api_key=api_key, api_base=api_base, model=model)
-
-        # Execute schedule
-        result = ai_service.execute_schedule(proposal, admin_user_id=current_user.id)
-
-        if result["success"]:
-            return jsonify(result)
-        else:
-            return jsonify(result), 400
-
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e),
-            "message": f"Error executing schedule: {str(e)}"
-        }), 500
 
 
 @app.route("/schedules/add", methods=["GET", "POST"])

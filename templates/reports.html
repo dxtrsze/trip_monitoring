@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Reports{% endblock %}
+{% block title %}Reports - Trip Monitoring System{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h1>Reports</h1>
+  <h1><i class="bi bi-bar-chart-line"></i> Reports</h1>
 </div>
 
 <div class="row mb-4">
   <!-- Scheduled Tripping Reports Card -->
   <div class="col-md-4 mb-3">
     <div class="card h-100">
-      <div class="card-header bg-primary text-white">
+      <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-calendar-check"></i> Scheduled Tripping Reports</h5>
       </div>
       <div class="card-body">
@@ -34,7 +34,7 @@
   <!-- Truck Load Utilization Card -->
   <div class="col-md-4 mb-3">
     <div class="card h-100">
-      <div class="card-header bg-success text-white">
+      <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-truck"></i> Truck Load Utilization</h5>
       </div>
       <div class="card-body">
@@ -64,7 +64,7 @@
   <!-- Truck Utilization Card -->
   <div class="col-md-4 mb-3">
     <div class="card h-100">
-      <div class="card-header bg-info text-white">
+      <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-truck"></i> Truck Utilization</h5>
       </div>
       <div class="card-body">
@@ -81,7 +81,7 @@
           </div>
           <div class="row mb-3">
             <div class="col-md-12">
-              <button type="submit" class="btn btn-info w-100 text-white">
+              <button type="submit" class="btn btn-primary w-100">
                 <i class="bi bi-graph-up"></i> View Fleet Utilization
               </button>
             </div>
@@ -96,7 +96,7 @@
   <!-- Fuel Efficiency Card -->
   <div class="col-md-4 mb-3">
     <div class="card h-100">
-      <div class="card-header bg-warning text-dark">
+      <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-fuel-pump"></i> Fuel Efficiency (ODO)</h5>
       </div>
       <div class="card-body">
@@ -130,7 +130,7 @@
           </div>
           <div class="row mb-3">
             <div class="col-md-12">
-              <button type="submit" class="btn btn-warning w-100 text-dark">
+              <button type="submit" class="btn btn-primary w-100">
                 <i class="bi bi-fuel-pump"></i> View ODO Records
               </button>
             </div>
@@ -143,7 +143,7 @@
   <!-- Frequency Rate Card -->
   <div class="col-md-4 mb-3">
     <div class="card h-100">
-      <div class="card-header bg-secondary text-white">
+      <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-graph-up-arrow"></i> Frequency Rate</h5>
       </div>
       <div class="card-body">
@@ -160,7 +160,7 @@
           </div>
           <div class="row mb-3">
             <div class="col-md-12">
-              <button type="submit" class="btn btn-secondary w-100 text-white">
+              <button type="submit" class="btn btn-primary w-100">
                 <i class="bi bi-bar-chart"></i> View Frequency Rate
               </button>
             </div>
@@ -173,7 +173,7 @@
   <!-- DIFOT Card -->
   <div class="col-md-4 mb-3">
     <div class="card h-100">
-      <div class="card-header bg-danger text-white">
+      <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-clock-history"></i> DIFOT (Delivery In Full, On Time)</h5>
       </div>
       <div class="card-body">
@@ -190,7 +190,7 @@
           </div>
           <div class="row mb-3">
             <div class="col-md-12">
-              <button type="submit" class="btn btn-danger w-100 text-white">
+              <button type="submit" class="btn btn-primary w-100">
                 <i class="bi bi-graph-up-arrow"></i> View DIFOT Report
               </button>
             </div>
@@ -203,7 +203,7 @@
   <!-- Missing Data Card -->
   <div class="col-md-4 mb-3">
     <div class="card h-100">
-      <div class="card-header bg-dark text-white">
+      <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Missing Data Report</h5>
       </div>
       <div class="card-body">
@@ -220,7 +220,7 @@
           </div>
           <div class="row mb-3">
             <div class="col-md-12">
-              <button type="submit" class="btn btn-dark w-100 text-white">
+              <button type="submit" class="btn btn-primary w-100">
                 <i class="bi bi-search"></i> View Missing Data
               </button>
             </div>
@@ -233,7 +233,7 @@
   <!-- Driver/Assistant Time Log Matrix Card -->
   <div class="col-md-4 mb-3">
     <div class="card h-100">
-      <div class="card-header bg-info text-white">
+      <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-clock-history"></i> Driver/Assistant Time Logs</h5>
       </div>
       <div class="card-body">
@@ -263,12 +263,12 @@
 
 <!-- Scheduled Report Results -->
 <div class="card mt-4" id="reportResults" style="display:none;">
-  <div class="card-header d-flex justify-content-between align-items-center bg-primary text-white">
-    <h5 id="reportTitle">Scheduled Trips Report</h5>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0" id="reportTitle"><i class="bi bi-calendar-check"></i> Scheduled Trips Report</h5>
     <div>
-      <span id="reportDateRange" class="me-3"></span>
-      <button type="button" class="btn btn-sm btn-light" id="exportBtn">
-        <i class="bi bi-file-earmark-excel"></i> Export CSV
+      <span id="reportDateRange" class="me-3 text-muted small"></span>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="exportBtn">
+        <i class="bi bi-download"></i> Export CSV
       </button>
     </div>
   </div>
@@ -299,11 +299,11 @@
 
 <!-- Truck Load Utilization Results -->
 <div class="card mt-4" id="truckResults" style="display:none;">
-  <div class="card-header d-flex justify-content-between align-items-center bg-success text-white">
-    <h5><i class="bi bi-truck"></i> Truck Load Utilization Report</h5>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0"><i class="bi bi-truck"></i> Truck Load Utilization Report</h5>
     <div>
-      <span id="truckDateRange" class="me-3"></span>
-      <button type="button" class="btn btn-sm btn-light" id="exportTruckBtn">
+      <span id="truckDateRange" class="me-3 text-muted small"></span>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="exportTruckBtn">
         <i class="bi bi-download"></i> Export CSV
       </button>
     </div>
@@ -331,11 +331,11 @@
 
 <!-- Truck Fleet Utilization Results -->
 <div class="card mt-4" id="fleetResults" style="display:none;">
-  <div class="card-header d-flex justify-content-between align-items-center bg-info text-white">
-    <h5><i class="bi bi-truck"></i> Truck Fleet Utilization Report</h5>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0"><i class="bi bi-truck"></i> Truck Fleet Utilization Report</h5>
     <div>
-      <span id="fleetDateRange" class="me-3"></span>
-      <button type="button" class="btn btn-sm btn-light" id="exportFleetBtn">
+      <span id="fleetDateRange" class="me-3 text-muted small"></span>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="exportFleetBtn">
         <i class="bi bi-download"></i> Export CSV
       </button>
     </div>
@@ -361,18 +361,18 @@
 
 <!-- Fuel Efficiency/ODO Results -->
 <div class="card mt-4" id="fuelResults" style="display:none;">
-  <div class="card-header d-flex justify-content-between align-items-center bg-warning text-dark">
-    <h5><i class="bi bi-fuel-pump"></i> ODO Records Report</h5>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0"><i class="bi bi-fuel-pump"></i> ODO Records Report</h5>
     <div>
-      <span id="fuelDateRange" class="me-3"></span>
-      <button type="button" class="btn btn-sm btn-dark" id="exportFuelBtn">
+      <span id="fuelDateRange" class="me-3 text-muted small"></span>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="exportFuelBtn">
         <i class="bi bi-download"></i> Export CSV
       </button>
     </div>
   </div>
   <div class="card-body">
     <!-- Summary Section -->
-    <div class="card mb-3 bg-light">
+    <div class="card mb-3">
       <div class="card-header py-2">
         <h6 class="mb-0"><i class="bi bi-calculator"></i> Summary by Vehicle</h6>
       </div>
@@ -421,11 +421,11 @@
 
 <!-- Frequency Rate Results -->
 <div class="card mt-4" id="frequencyResults" style="display:none;">
-  <div class="card-header d-flex justify-content-between align-items-center bg-secondary text-white">
-    <h5><i class="bi bi-graph-up-arrow"></i> Delivery Frequency Rate Report</h5>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0"><i class="bi bi-graph-up-arrow"></i> Delivery Frequency Rate Report</h5>
     <div>
-      <span id="frequencyDateRange" class="me-3"></span>
-      <button type="button" class="btn btn-sm btn-light" id="exportFrequencyBtn">
+      <span id="frequencyDateRange" class="me-3 text-muted small"></span>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="exportFrequencyBtn">
         <i class="bi bi-download"></i> Export CSV
       </button>
     </div>
@@ -451,11 +451,11 @@
 
 <!-- DIFOT Results -->
 <div class="card mt-4" id="difotResults" style="display:none;">
-  <div class="card-header d-flex justify-content-between align-items-center bg-danger text-white">
-    <h5><i class="bi bi-clock-history"></i> DIFOT Report</h5>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0"><i class="bi bi-clock-history"></i> DIFOT Report</h5>
     <div>
-      <span id="difotDateRange" class="me-3"></span>
-      <button type="button" class="btn btn-sm btn-light" id="exportDifotBtn">
+      <span id="difotDateRange" class="me-3 text-muted small"></span>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="exportDifotBtn">
         <i class="bi bi-download"></i> Export CSV
       </button>
     </div>
@@ -484,19 +484,19 @@
 
 <!-- Missing Data Results -->
 <div class="card mt-4" id="missingResults" style="display:none;">
-  <div class="card-header d-flex justify-content-between align-items-center bg-dark text-white">
-    <h5><i class="bi bi-exclamation-triangle"></i> Missing Data Report</h5>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Missing Data Report</h5>
     <div>
-      <span id="missingDateRange" class="me-3"></span>
-      <button type="button" class="btn btn-sm btn-light" id="exportMissingBtn">
+      <span id="missingDateRange" class="me-3 text-muted small"></span>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="exportMissingBtn">
         <i class="bi bi-download"></i> Export CSV
       </button>
     </div>
   </div>
   <div class="card-body">
     <!-- Missing Trip Details Section -->
-    <div class="card mb-3 border-warning">
-      <div class="card-header py-2 bg-warning text-dark">
+    <div class="card mb-3">
+      <div class="card-header py-2">
         <h6 class="mb-0"><i class="bi bi-exclamation-circle"></i> Trips with Missing Arrive/Departure Data</h6>
       </div>
       <div class="card-body">
@@ -522,8 +522,8 @@
       </div>
     </div>
     <!-- Missing ODO Records Section -->
-    <div class="card border-danger">
-      <div class="card-header py-2 bg-danger text-white">
+    <div class="card">
+      <div class="card-header py-2">
         <h6 class="mb-0"><i class="bi bi-x-circle"></i> Vehicles with No ODO Records</h6>
       </div>
       <div class="card-body">
@@ -553,11 +553,11 @@
 
 <!-- Driver/Assistant Time Log Matrix Results -->
 <div class="card mt-4" id="timeLogMatrixResults" style="display:none;">
-  <div class="card-header d-flex justify-content-between align-items-center bg-info text-white">
-    <h5><i class="bi bi-clock-history"></i> Driver/Assistant Time Log Matrix</h5>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Driver/Assistant Time Log Matrix</h5>
     <div>
-      <span id="timeLogDateRange" class="me-3"></span>
-      <button type="button" class="btn btn-sm btn-light" id="exportTimeLogBtn">
+      <span id="timeLogDateRange" class="me-3 text-muted small"></span>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="exportTimeLogBtn">
         <i class="bi bi-download"></i> Export CSV
       </button>
     </div>
