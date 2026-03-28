@@ -19,9 +19,7 @@
   #deliveryCountsChart,
   #fuelEfficiencyChart,
   #truckUtilizationChart,
-  #vehicleUtilizationChart,
-  #branchFrequencyChart,
-  #driverPerformanceChart {
+  #vehicleUtilizationChart {
     /* !important needed to override inline ECharts styles */
     height: 250px !important;
   }
@@ -31,9 +29,7 @@
   #deliveryCountsChart,
   #fuelEfficiencyChart,
   #truckUtilizationChart,
-  #vehicleUtilizationChart,
-  #branchFrequencyChart,
-  #driverPerformanceChart {
+  #vehicleUtilizationChart {
     /* !important needed to override inline ECharts styles */
     height: 200px !important;
   }
