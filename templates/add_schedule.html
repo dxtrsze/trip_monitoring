@@ -25,9 +25,10 @@
         </div>
         <div class="col-md-4 mb-3">
           <label class="form-label">Filter by Area</label>
-          <select class="form-select" id="areaFilter">
-            <option value="">All Areas</option>
+          <select class="form-select" id="areaFilter" multiple size="3">
           </select>
+          <button type="button" class="btn btn-sm btn-outline-secondary mt-1" id="clearAreaFilter">Clear Selection</button>
+          <div class="form-text">Hold Ctrl/Cmd to select multiple areas</div>
         </div>
       </div>
       <button type="button" class="btn btn-primary" id="loadBtn">Load Available Shipments</button>
@@ -46,9 +47,13 @@
       <button type="submit" class="btn btn-success">Save Schedule</button>
     </div>
     <div class="card mb-4">
-      <div class="card-header">
-        Available Shipments (<span id="shipmentCount">0</span> <span id="totalCountDisplay"></span>)
-        <span id="dateRangeDisplay" class="badge bg-info ms-2" style="display:none;"></span>
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Available Shipments (<span id="shipmentCount">0</span> <span id="totalCountDisplay"></span>)
+        <span id="dateRangeDisplay" class="badge bg-info ms-2" style="display:none;"></span></span>
+        <div>
+          <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllShipments">Select All</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary ms-1" id="unselectAllShipments">Unselect All</button>
+        </div>
       </div>
       <div class="card-body">
         <div id="shipmentsList"></div>
@@ -64,25 +69,12 @@ let tripCounter = 0;
 let shipments = [];
 let allShipments = []; // Store all shipments for filtering
 
-// Load areas when page loads
+// Set default From Date to tomorrow
 document.addEventListener('DOMContentLoaded', function() {
-  // Set default From Date to tomorrow
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().split('T')[0];
   document.getElementById('deliveryDateFrom').value = tomorrowStr;
-
-  fetch('/api/areas')
-    .then(res => res.json())
-    .then(areas => {
-      const areaFilter = document.getElementById('areaFilter');
-      areas.forEach(area => {
-        const option = document.createElement('option');
-        option.value = area;
-        option.textContent = area;
-        areaFilter.appendChild(option);
-      });
-    });
 });
 
 // Filter shipments when area changes
@@ -90,18 +82,45 @@ document.getElementById('areaFilter').addEventListener('change', function() {
   filterShipments();
 });
 
-function filterShipments() {
-  const selectedArea = document.getElementById('areaFilter').value;
+document.getElementById('clearAreaFilter').addEventListener('click', function() {
+  const areaFilter = document.getElementById('areaFilter');
+  Array.from(areaFilter.options).forEach(opt => opt.selected = false);
+  filterShipments();
+});
 
-  if (!selectedArea) {
+function filterShipments() {
+  const areaFilter = document.getElementById('areaFilter');
+  const selectedAreas = Array.from(areaFilter.selectedOptions).map(opt => opt.value);
+
+  if (selectedAreas.length === 0) {
     // Show all shipments
     shipments = allShipments;
   } else {
-    // Filter by selected area
-    shipments = allShipments.filter(item => item.area === selectedArea);
+    // Filter by selected areas
+    shipments = allShipments.filter(item => selectedAreas.includes(item.area));
   }
 
   renderShipments();
+}
+
+function populateAreaFilter() {
+  const areaFilter = document.getElementById('areaFilter');
+  const selectedAreas = Array.from(areaFilter.selectedOptions).map(opt => opt.value);
+
+  // Get unique areas from loaded shipments
+  const areas = [...new Set(allShipments.map(item => item.area))].sort();
+
+  areaFilter.innerHTML = '';
+  areas.forEach(area => {
+    const option = document.createElement('option');
+    option.value = area;
+    option.textContent = area;
+    // Preserve previous selection if area still exists
+    if (selectedAreas.includes(area)) {
+      option.selected = true;
+    }
+    areaFilter.appendChild(option);
+  });
 }
 
 document.getElementById('loadBtn').addEventListener('click', function() {
@@ -128,6 +147,8 @@ document.getElementById('loadBtn').addEventListener('click', function() {
     .then(res => res.json())
     .then(data => {
       allShipments = data;
+      // Populate area dropdown from available shipments
+      populateAreaFilter();
       // Apply area filter if one is selected
       filterShipments();
       document.getElementById('shipmentsSection').style.display = 'block';
@@ -241,6 +262,14 @@ function renderShipments() {
 }
 
 document.getElementById('addTripBtn').addEventListener('click', addTrip);
+
+document.getElementById('selectAllShipments').addEventListener('click', function() {
+  document.querySelectorAll('.shipment-checkbox:not(:disabled)').forEach(cb => cb.checked = true);
+});
+
+document.getElementById('unselectAllShipments').addEventListener('click', function() {
+  document.querySelectorAll('.shipment-checkbox').forEach(cb => cb.checked = false);
+});
 
 // Helper function to get ordinal suffix (1st, 2nd, 3rd, etc.)
 function getOrdinal(n) {
