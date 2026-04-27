@@ -3244,7 +3244,7 @@ def location_logs():
     action_type = request.args.get('action_type')
 
     # Build query
-    query = LocationLog.query.join(TripDetail).join(Trip).join(Schedule)
+    query = LocationLog.query.join(TripDetail)
 
     # Apply filters
     if start_date:
