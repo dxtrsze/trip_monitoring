@@ -735,7 +735,7 @@ function getLocationWithTimeout() {
 async function recordArrivalWithLocation(branchName, scheduleId, tripNumber, reason) {
   try {
     // Get location first
-    const location = await getLocationWithTimeout();
+    const position = await getLocationWithTimeout();
 
     // Send arrival request with location
     const response = await fetch('/record_arrival', {
@@ -746,14 +746,14 @@ async function recordArrivalWithLocation(branchName, scheduleId, tripNumber, rea
         schedule_id: scheduleId,
         trip_number: tripNumber,
         reason: reason,
-        latitude: location.latitude,
-        longitude: location.longitude
+        latitude: position.latitude,
+        longitude: position.longitude
       })
     });
 
     const data = await response.json();
     if (data.success) {
-      location.reload();
+      window.location.reload();
     } else {
       alert('Error recording arrival: ' + data.message);
     }
@@ -773,7 +773,7 @@ async function recordArrivalWithLocation(branchName, scheduleId, tripNumber, rea
 async function recordDepartureWithLocation(branchName, scheduleId, tripNumber, reason) {
   try {
     // Get location first
-    const location = await getLocationWithTimeout();
+    const position = await getLocationWithTimeout();
 
     // Send departure request with location
     const response = await fetch('/record_departure', {
@@ -784,14 +784,14 @@ async function recordDepartureWithLocation(branchName, scheduleId, tripNumber, r
         schedule_id: scheduleId,
         trip_number: tripNumber,
         reason: reason,
-        latitude: location.latitude,
-        longitude: location.longitude
+        latitude: position.latitude,
+        longitude: position.longitude
       })
     });
 
     const data = await response.json();
     if (data.success) {
-      location.reload();
+      window.location.reload();
     } else {
       alert('Error recording departure: ' + data.message);
     }
