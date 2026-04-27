@@ -217,6 +217,234 @@
       </div>
     </div>
 
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+// Vehicle Route Map
+(function() {
+  const VEHICLE_COLORS = [
+    '#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4',
+    '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990',
+    '#dcbeff', '#9A6324', '#800000', '#aaffc3', '#808000',
+    '#ffd8b1', '#000075', '#a9a9a9'
+  ];
+
+  let map = null;
+  let markersGroup = null;
+  let linesGroup = null;
+
+  function initMap() {
+    if (map) return;
+
+    map = L.map('vehicle-map').setView([14.606, 121.091], 11);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 18
+    }).addTo(map);
+
+    markersGroup = L.layerGroup().addTo(map);
+    linesGroup = L.layerGroup().addTo(map);
+
+    // Load routes on init
+    loadVehicleRoutes();
+  }
+
+  function createInIcon(color) {
+    return L.divIcon({
+      className: 'custom-div-icon',
+      html: '<div style="background:' + color + ';width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>',
+      iconSize: [14, 14],
+      iconAnchor: [7, 7]
+    });
+  }
+
+  function createOutIcon(color) {
+    return L.divIcon({
+      className: 'custom-div-icon',
+      html: '<div style="background:' + color + ';width:12px;height:12px;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.4);transform:rotate(45deg);"></div>',
+      iconSize: [12, 12],
+      iconAnchor: [6, 6]
+    });
+  }
+
+  function formatTime(timeStr) {
+    if (!timeStr) return '\u2014';
+    return timeStr.split(' ')[1] || timeStr;
+  }
+
+  function buildPopupContent(stop, plateNumber) {
+    let html = '<div style="min-width:200px;">';
+    html += '<strong>' + (stop.branch || 'Unknown Branch') + '</strong><br>';
+    html += '<small class="text-muted">' + plateNumber + '</small><hr style="margin:5px 0;">';
+    html += '<table style="font-size:12px;width:100%;">';
+    html += '<tr><td><span style="color:#28a745;">&#9679;</span> In:</td><td>' + formatTime(stop.in_time) + '</td></tr>';
+    html += '<tr><td><span style="color:#fd7e14;">&#9670;</span> Out:</td><td>' + formatTime(stop.out_time) + '</td></tr>';
+    html += '</table>';
+    if (stop.in_location) {
+      html += '<a href="https://www.google.com/maps?q=' + stop.in_location.lat + ',' + stop.in_location.lng + '" target="_blank" style="font-size:11px;">View on Google Maps</a>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function loadVehicleRoutes() {
+    var date = document.getElementById('map-date').value;
+    var vehicleId = document.getElementById('map-vehicle').value;
+
+    if (!date) {
+      alert('Please select a date');
+      return;
+    }
+
+    // Clear existing layers
+    markersGroup.clearLayers();
+    linesGroup.clearLayers();
+
+    // Build URL
+    var url = '/api/vehicle-routes?date=' + date;
+    if (vehicleId) url += '&vehicle_id=' + vehicleId;
+
+    fetch(url)
+      .then(function(response) { return response.json(); })
+      .then(function(data) {
+        if (!data.success) {
+          alert('Error: ' + data.message);
+          return;
+        }
+
+        var vehicles = data.vehicles;
+        var emptyState = document.getElementById('map-empty-state');
+        var legend = document.getElementById('map-legend');
+        var legendItems = document.getElementById('legend-items');
+
+        // Handle empty state
+        if (!vehicles || vehicles.length === 0) {
+          emptyState.style.display = 'block';
+          legend.style.display = 'none';
+          return;
+        }
+
+        emptyState.style.display = 'none';
+        legend.style.display = 'block';
+
+        // Populate vehicle filter dropdown if empty
+        var select = document.getElementById('map-vehicle');
+        if (select.options.length <= 1) {
+          vehicles.forEach(function(v) {
+            var opt = document.createElement('option');
+            opt.value = v.vehicle_id;
+            opt.textContent = v.plate_number;
+            select.appendChild(opt);
+          });
+        }
+
+        // Build legend
+        legendItems.innerHTML = '';
+        var allCoords = [];
+
+        vehicles.forEach(function(vehicle, vIndex) {
+          var color = VEHICLE_COLORS[vIndex % VEHICLE_COLORS.length];
+
+          // Legend item
+          var legendItem = document.createElement('div');
+          legendItem.className = 'd-flex align-items-center';
+          legendItem.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:' + color + ';margin-right:6px;"></span>' +
+            '<strong>' + vehicle.plate_number + '</strong>' +
+            '<span class="badge bg-secondary ms-2">' + vehicle.stops.length + ' stops</span>';
+          legendItems.appendChild(legendItem);
+
+          // Draw stops
+          var routeCoords = [];
+
+          vehicle.stops.forEach(function(stop) {
+            // In marker
+            if (stop.in_location) {
+              var inMarker = L.marker(
+                [stop.in_location.lat, stop.in_location.lng],
+                { icon: createInIcon(color) }
+              );
+              inMarker.bindPopup(buildPopupContent(stop, vehicle.plate_number));
+              markersGroup.addLayer(inMarker);
+              routeCoords.push([stop.in_location.lat, stop.in_location.lng]);
+              allCoords.push([stop.in_location.lat, stop.in_location.lng]);
+            }
+
+            // Out marker
+            if (stop.out_location) {
+              var outMarker = L.marker(
+                [stop.out_location.lat, stop.out_location.lng],
+                { icon: createOutIcon(color) }
+              );
+              outMarker.bindPopup(buildPopupContent(stop, vehicle.plate_number));
+              markersGroup.addLayer(outMarker);
+              routeCoords.push([stop.out_location.lat, stop.out_location.lng]);
+              allCoords.push([stop.out_location.lat, stop.out_location.lng]);
+            }
+
+            // Route line from In to Out for same stop
+            if (stop.in_location && stop.out_location) {
+              var line = L.polyline([
+                [stop.in_location.lat, stop.in_location.lng],
+                [stop.out_location.lat, stop.out_location.lng]
+              ], {
+                color: color,
+                weight: 3,
+                opacity: 0.7,
+                dashArray: '6, 4'
+              });
+              linesGroup.addLayer(line);
+            }
+          });
+
+          // Full route line connecting all stops in order
+          if (routeCoords.length > 1) {
+            var fullLine = L.polyline(routeCoords, {
+              color: color,
+              weight: 2,
+              opacity: 0.4
+            });
+            linesGroup.addLayer(fullLine);
+          }
+        });
+
+        // Fit map to show all markers
+        if (allCoords.length > 0) {
+          var bounds = L.latLngBounds(allCoords);
+          map.fitBounds(bounds, { padding: [30, 30] });
+        }
+      })
+      .catch(function(error) {
+        console.error('Error loading vehicle routes:', error);
+        alert('Failed to load vehicle route data');
+      });
+  }
+
+  // Initialize map when tab is shown
+  document.getElementById('map-tab').addEventListener('shown.bs.tab', function() {
+    initMap();
+    setTimeout(function() { map.invalidateSize(); }, 100);
+  });
+
+  // Load button click
+  document.getElementById('btn-load-map').addEventListener('click', loadVehicleRoutes);
+
+  // Date change - reload
+  document.getElementById('map-date').addEventListener('change', function() {
+    if (map) loadVehicleRoutes();
+  });
+
+  // Vehicle filter change - reload
+  document.getElementById('map-vehicle').addEventListener('change', function() {
+    if (map) loadVehicleRoutes();
+  });
+})();
+    </script>
+
   </div>
 
 </div>
