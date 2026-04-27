@@ -73,7 +73,7 @@
           <tr>
             <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
             <td>{{ log.user.name if log.user else 'Unknown' }}</td>
-            <td>{{ log.trip_detail.branch_name_v2 }}</td>
+            <td>{{ log.trip_detail.branch_name_v2 if log.trip_detail else 'N/A' }}</td>
             <td>
               {% if log.action_type == 'arrival' %}
               <span class="badge bg-success">In</span>
@@ -83,7 +83,7 @@
             </td>
             <td>
               <small class="text-muted">
-                {{ "%.6f"|format(log.latitude) }}, {{ "%.6f"|format(log.longitude) }}
+                {{ "%.6f"|format(log.latitude) if log.latitude is not none else 'N/A' }}, {{ "%.6f"|format(log.longitude) if log.longitude is not none else 'N/A' }}
               </small>
             </td>
             <td>
