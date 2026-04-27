@@ -38,7 +38,7 @@ def migrate_location_log():
                 with db.engine.connect() as conn:
                     conn.execute(text("""
                         CREATE TABLE location_log (
-                            id SERIAL PRIMARY KEY,
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
                             trip_detail_id INTEGER NOT NULL REFERENCES trip_detail(id),
                             action_type VARCHAR(20) NOT NULL,
                             latitude FLOAT NOT NULL,
