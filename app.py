@@ -3129,11 +3129,19 @@ def record_arrival():
 
         # Store location if provided
         if latitude is not None and longitude is not None:
+            try:
+                lat = float(latitude)
+                lon = float(longitude)
+            except (ValueError, TypeError):
+                return jsonify(
+                    {"success": False, "message": "Invalid coordinates provided"}
+                ), 400
+
             location_log = LocationLog(
                 trip_detail_id=trip_detail.id,
                 action_type='arrival',
-                latitude=float(latitude),
-                longitude=float(longitude),
+                latitude=lat,
+                longitude=lon,
                 captured_at=datetime.now(),
                 user_id=current_user.id
             )
