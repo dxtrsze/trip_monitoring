@@ -1123,39 +1123,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Event delegation for Out buttons
   document.querySelectorAll('.btn-record-departure').forEach(button => {
-    button.addEventListener('click', function() {
+    button.addEventListener('click', async function() {
       const row = this.closest('tr');
       const branchName = row.getAttribute('data-branch-name');
       const tripNumber = parseInt(row.getAttribute('data-trip-number'));
       const scheduleId = parseInt(row.getAttribute('data-schedule-id'));
-      const reasonInput = row.querySelector('input[id^="reason_"]');
+      const reasonInput = row.querySelector('textarea[id^="reason_"]');
       const reason = reasonInput ? reasonInput.value : '';
 
-      // Send the departure request
-      fetch('/record_departure', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          branch_name_v2: branchName,
-          schedule_id: scheduleId,
-          trip_number: tripNumber,
-          reason: reason
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          location.reload();
-        } else {
-          alert('Error recording departure: ' + data.message);
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while recording departure');
-      });
+      // Use the new location-aware function
+      await recordDepartureWithLocation(branchName, scheduleId, tripNumber, reason);
     });
   });
 
