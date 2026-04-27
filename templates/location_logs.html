@@ -7,146 +7,217 @@
   <a href="{{ url_for('view_schedule') }}" class="btn btn-outline-secondary">Back to Schedules</a>
 </div>
 
-<!-- Filter Form -->
-<div class="card mb-4">
-  <div class="card-header">
-    <h6 class="mb-0"><i class="bi bi-funnel"></i> Filters</h6>
-  </div>
-  <div class="card-body">
-    <form method="get" action="{{ url_for('location_logs') }}" class="row g-3">
-      <div class="col-md-3">
-        <label for="start_date" class="form-label">Start Date</label>
-        <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date or '' }}">
-      </div>
-      <div class="col-md-3">
-        <label for="end_date" class="form-label">End Date</label>
-        <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date or '' }}">
-      </div>
-      <div class="col-md-3">
-        <label for="user_id" class="form-label">User</label>
-        <select class="form-select" id="user_id" name="user_id">
-          <option value="">All Users</option>
-          {% for user in users %}
-          <option value="{{ user.id }}" {% if user_id|int == user.id %}selected{% endif %}>{{ user.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-2">
-        <label for="action_type" class="form-label">Action Type</label>
-        <select class="form-select" id="action_type" name="action_type">
-          <option value="">All Actions</option>
-          <option value="arrival" {% if action_type == 'arrival' %}selected{% endif %}>In (Arrival)</option>
-          <option value="departure" {% if action_type == 'departure' %}selected{% endif %}>Out (Departure)</option>
-        </select>
-      </div>
-      <div class="col-md-1 d-flex align-items-end">
-        <button type="submit" class="btn btn-primary w-100">Filter</button>
-      </div>
-      <div class="col-12">
-        <a href="{{ url_for('location_logs') }}" class="btn btn-outline-secondary btn-sm">Clear Filters</a>
-      </div>
-    </form>
-  </div>
-</div>
+<ul class="nav nav-tabs mb-3" id="locationLogsTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="table-tab" data-bs-toggle="tab" data-bs-target="#table-view" type="button" role="tab">
+      <i class="bi bi-table"></i> Table View
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="map-tab" data-bs-toggle="tab" data-bs-target="#map-view" type="button" role="tab">
+      <i class="bi bi-map"></i> Map View
+    </button>
+  </li>
+</ul>
+<div class="tab-content" id="locationLogsTabContent">
 
-<!-- Location Logs Table -->
-<div class="card">
-  <div class="card-header">
-    <h6 class="mb-0">Location History ({{ pagination.total }} records)</h6>
-  </div>
-  <div class="card-body">
-    {% if location_logs %}
-    <div class="table-responsive">
-      <table class="table table-sm table-striped">
-        <thead>
-          <tr>
-            <th>Date/Time</th>
-            <th>User</th>
-            <th>Branch</th>
-            <th>Action</th>
-            <th>Coordinates</th>
-            <th>Map</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for log in location_logs %}
-          {% if log %}
-          <tr>
-            <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-            <td>{{ log.user.name if log.user else 'Unknown' }}</td>
-            <td>{{ log.trip_detail.branch_name_v2 if log.trip_detail else 'N/A' }}</td>
-            <td>
-              {% if log.action_type == 'arrival' %}
-              <span class="badge bg-success">In</span>
-              {% else %}
-              <span class="badge bg-warning">Out</span>
-              {% endif %}
-            </td>
-            <td>
-              <small class="text-muted">
-                {{ "%.6f"|format(log.latitude) if log.latitude is not none else 'N/A' }}, {{ "%.6f"|format(log.longitude) if log.longitude is not none else 'N/A' }}
-              </small>
-            </td>
-            <td>
-              {% if log.latitude is not none and log.longitude is not none %}
-              <a href="https://www.google.com/maps?q={{ log.latitude }},{{ log.longitude }}"
-                 target="_blank"
-                 class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-map"></i> View
-              </a>
-              {% else %}
-              <span class="text-muted">N/A</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% endif %}
-          {% endfor %}
-        </tbody>
-      </table>
+  <!-- Table View Tab Pane -->
+  <div class="tab-pane fade show active" id="table-view" role="tabpanel">
+
+    <!-- Filter Form -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h6 class="mb-0"><i class="bi bi-funnel"></i> Filters</h6>
+      </div>
+      <div class="card-body">
+        <form method="get" action="{{ url_for('location_logs') }}" class="row g-3">
+          <div class="col-md-3">
+            <label for="start_date" class="form-label">Start Date</label>
+            <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date or '' }}">
+          </div>
+          <div class="col-md-3">
+            <label for="end_date" class="form-label">End Date</label>
+            <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date or '' }}">
+          </div>
+          <div class="col-md-3">
+            <label for="user_id" class="form-label">User</label>
+            <select class="form-select" id="user_id" name="user_id">
+              <option value="">All Users</option>
+              {% for user in users %}
+              <option value="{{ user.id }}" {% if user_id|int == user.id %}selected{% endif %}>{{ user.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label for="action_type" class="form-label">Action Type</label>
+            <select class="form-select" id="action_type" name="action_type">
+              <option value="">All Actions</option>
+              <option value="arrival" {% if action_type == 'arrival' %}selected{% endif %}>In (Arrival)</option>
+              <option value="departure" {% if action_type == 'departure' %}selected{% endif %}>Out (Departure)</option>
+            </select>
+          </div>
+          <div class="col-md-1 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">Filter</button>
+          </div>
+          <div class="col-12">
+            <a href="{{ url_for('location_logs') }}" class="btn btn-outline-secondary btn-sm">Clear Filters</a>
+          </div>
+        </form>
+      </div>
     </div>
 
-    <!-- Pagination -->
-    {% if pagination.pages > 1 %}
-    <nav aria-label="Page navigation" class="mt-3">
-      <ul class="pagination justify-content-center">
-        {% if pagination.has_prev %}
-        <li class="page-item">
-          <a class="page-link" href="{{ url_for('location_logs', page=pagination.prev_num, start_date=start_date, end_date=end_date, user_id=user_id, action_type=action_type) }}">Previous</a>
-        </li>
-        {% else %}
-        <li class="page-item disabled"><span class="page-link">Previous</span></li>
-        {% endif %}
+    <!-- Location Logs Table -->
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0">Location History ({{ pagination.total }} records)</h6>
+      </div>
+      <div class="card-body">
+        {% if location_logs %}
+        <div class="table-responsive">
+          <table class="table table-sm table-striped">
+            <thead>
+              <tr>
+                <th>Date/Time</th>
+                <th>User</th>
+                <th>Branch</th>
+                <th>Action</th>
+                <th>Coordinates</th>
+                <th>Map</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for log in location_logs %}
+              {% if log %}
+              <tr>
+                <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>{{ log.user.name if log.user else 'Unknown' }}</td>
+                <td>{{ log.trip_detail.branch_name_v2 if log.trip_detail else 'N/A' }}</td>
+                <td>
+                  {% if log.action_type == 'arrival' %}
+                  <span class="badge bg-success">In</span>
+                  {% else %}
+                  <span class="badge bg-warning">Out</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <small class="text-muted">
+                    {{ "%.6f"|format(log.latitude) if log.latitude is not none else 'N/A' }}, {{ "%.6f"|format(log.longitude) if log.longitude is not none else 'N/A' }}
+                  </small>
+                </td>
+                <td>
+                  {% if log.latitude is not none and log.longitude is not none %}
+                  <a href="https://www.google.com/maps?q={{ log.latitude }},{{ log.longitude }}"
+                     target="_blank"
+                     class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-map"></i> View
+                  </a>
+                  {% else %}
+                  <span class="text-muted">N/A</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
 
-        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
-          {% if page_num %}
-            {% if page_num == pagination.page %}
-            <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
-            {% else %}
+        <!-- Pagination -->
+        {% if pagination.pages > 1 %}
+        <nav aria-label="Page navigation" class="mt-3">
+          <ul class="pagination justify-content-center">
+            {% if pagination.has_prev %}
             <li class="page-item">
-              <a class="page-link" href="{{ url_for('location_logs', page=page_num, start_date=start_date, end_date=end_date, user_id=user_id, action_type=action_type) }}">{{ page_num }}</a>
+              <a class="page-link" href="{{ url_for('location_logs', page=pagination.prev_num, start_date=start_date, end_date=end_date, user_id=user_id, action_type=action_type) }}">Previous</a>
             </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">Previous</span></li>
             {% endif %}
-          {% else %}
-          <li class="page-item disabled"><span class="page-link">...</span></li>
-          {% endif %}
-        {% endfor %}
 
-        {% if pagination.has_next %}
-        <li class="page-item">
-          <a class="page-link" href="{{ url_for('location_logs', page=pagination.next_num, start_date=start_date, end_date=end_date, user_id=user_id, action_type=action_type) }}">Next</a>
-        </li>
-        {% else %}
-        <li class="page-item disabled"><span class="page-link">Next</span></li>
+            {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+              {% if page_num %}
+                {% if page_num == pagination.page %}
+                <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                {% else %}
+                <li class="page-item">
+                  <a class="page-link" href="{{ url_for('location_logs', page=page_num, start_date=start_date, end_date=end_date, user_id=user_id, action_type=action_type) }}">{{ page_num }}</a>
+                </li>
+                {% endif %}
+              {% else %}
+              <li class="page-item disabled"><span class="page-link">...</span></li>
+              {% endif %}
+            {% endfor %}
+
+            {% if pagination.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="{{ url_for('location_logs', page=pagination.next_num, start_date=start_date, end_date=end_date, user_id=user_id, action_type=action_type) }}">Next</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">Next</span></li>
+            {% endif %}
+          </ul>
+        </nav>
         {% endif %}
-      </ul>
-    </nav>
-    {% endif %}
 
-    {% else %}
-    <div class="alert alert-info">
-      <i class="bi bi-info-circle"></i> No location logs found. {% if start_date or end_date or user_id or action_type %}<a href="{{ url_for('location_logs') }}">Clear filters</a> to view all logs.{% endif %}
+        {% else %}
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i> No location logs found. {% if start_date or end_date or user_id or action_type %}<a href="{{ url_for('location_logs') }}">Clear filters</a> to view all logs.{% endif %}
+        </div>
+        {% endif %}
+      </div>
     </div>
-    {% endif %}
+
   </div>
+
+  <!-- Map View Tab Pane -->
+  <div class="tab-pane fade" id="map-view" role="tabpanel">
+
+    <!-- Map Controls -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-3">
+            <label for="map-date" class="form-label">Date</label>
+            <input type="date" class="form-control" id="map-date" value="{{ today }}" max="{{ today }}">
+          </div>
+          <div class="col-md-3">
+            <label for="map-vehicle" class="form-label">Vehicle</label>
+            <select class="form-select" id="map-vehicle">
+              <option value="">All Vehicles</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <button type="button" class="btn btn-primary w-100" id="btn-load-map">
+              <i class="bi bi-search"></i> Load
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map Container -->
+    <div class="card">
+      <div class="card-body p-0">
+        <div id="vehicle-map" style="height: 600px; border-radius: 0.375rem;"></div>
+      </div>
+    </div>
+
+    <!-- Empty State for Map -->
+    <div id="map-empty-state" class="alert alert-info mt-3" style="display: none;">
+      <i class="bi bi-info-circle"></i> No location data found for the selected date.
+    </div>
+
+    <!-- Vehicle Legend -->
+    <div id="map-legend" class="card mt-3" style="display: none;">
+      <div class="card-header">
+        <h6 class="mb-0"><i class="bi bi-palette"></i> Vehicle Legend</h6>
+      </div>
+      <div class="card-body">
+        <div id="legend-items" class="d-flex flex-wrap gap-3"></div>
+      </div>
+    </div>
+
+  </div>
+
 </div>
 {% endblock %}

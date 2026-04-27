@@ -3279,7 +3279,8 @@ def location_logs():
         start_date=start_date,
         end_date=end_date,
         user_id=user_id,
-        action_type=action_type
+        action_type=action_type,
+        today=datetime.now().strftime('%Y-%m-%d')
     )
 
 
