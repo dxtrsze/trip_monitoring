@@ -25,6 +25,10 @@ def investigate():
         valid = []
 
         for log in all_logs:
+            if log is None:
+                print(f"✗ None value found in results")
+                continue
+
             trip_detail = TripDetail.query.get(log.trip_detail_id)
             if trip_detail:
                 valid.append(log)
