@@ -3229,6 +3229,57 @@ def record_departure():
         return jsonify({"success": False, "message": str(e)}), 500
 
 
+@app.route("/location_logs")
+@login_required
+def location_logs():
+    """Admin page for viewing location capture history."""
+    if current_user.position != 'admin':
+        flash('Access denied. Admin only.', 'danger')
+        return redirect(url_for('view_schedule'))
+
+    # Get query parameters for filtering
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    user_id = request.args.get('user_id')
+    action_type = request.args.get('action_type')
+
+    # Build query
+    query = LocationLog.query.join(TripDetail).join(Trip).join(Schedule)
+
+    # Apply filters
+    if start_date:
+        query = query.filter(LocationLog.created_at >= datetime.strptime(start_date, '%Y-%m-%d'))
+    if end_date:
+        end_datetime = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
+        query = query.filter(LocationLog.created_at < end_datetime)
+    if user_id:
+        query = query.filter(LocationLog.user_id == int(user_id))
+    if action_type:
+        query = query.filter(LocationLog.action_type == action_type)
+
+    # Order by most recent first
+    query = query.order_by(LocationLog.created_at.desc())
+
+    # Pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    # Get all users for filter dropdown
+    users = User.query.filter_by(status='active').order_by(User.name).all()
+
+    return render_template(
+        'location_logs.html',
+        location_logs=pagination.items,
+        pagination=pagination,
+        users=users,
+        start_date=start_date,
+        end_date=end_date,
+        user_id=user_id,
+        action_type=action_type
+    )
+
+
 # Odometer reading routes
 @app.route("/record_odo", methods=["POST"])
 @login_required
