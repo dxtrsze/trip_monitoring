@@ -4859,10 +4859,10 @@ def export_scheduled_trips_report():
 
         output.seek(0)
 
-        # Return as downloadable CSV file
+        # Return as downloadable CSV file with UTF-8 BOM for Windows Excel compatibility
         filename = f"scheduled_trips_report_{start_date_str}_to_{end_date_str}.csv"
         return Response(
-            output.getvalue(),
+            "\ufeff" + output.getvalue(),
             mimetype="text/csv",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
@@ -5168,9 +5168,9 @@ def export_report():
         df.to_csv(output, index=False)
         output.seek(0)
 
-        # Return as downloadable CSV file
+        # Return as downloadable CSV file with UTF-8 BOM for Windows Excel compatibility
         return Response(
-            output.getvalue(),
+            "\ufeff" + output.getvalue(),
             mimetype="text/csv",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
@@ -5330,10 +5330,10 @@ def export_truck_utilization():
 
         output.seek(0)
 
-        # Return as downloadable CSV file
+        # Return as downloadable CSV file with UTF-8 BOM for Windows Excel compatibility
         filename = f"truck_utilization_{start_date_str}_to_{end_date_str}.csv"
         return Response(
-            output.getvalue(),
+            "\ufeff" + output.getvalue(),
             mimetype="text/csv",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
@@ -5480,10 +5480,10 @@ def export_truck_fleet_utilization():
 
         output.seek(0)
 
-        # Return as downloadable CSV file
+        # Return as downloadable CSV file with UTF-8 BOM for Windows Excel compatibility
         filename = f"truck_fleet_utilization_{start_date_str}_to_{end_date_str}.csv"
         return Response(
-            output.getvalue(),
+            "\ufeff" + output.getvalue(),
             mimetype="text/csv",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
@@ -5755,12 +5755,12 @@ def export_fuel_efficiency():
 
         output.seek(0)
 
-        # Return as downloadable CSV file
+        # Return as downloadable CSV file with UTF-8 BOM for Windows Excel compatibility
         vehicle_suffix = f"_{vehicle_filter}" if vehicle_filter else ""
         dept_suffix = f"_{dept_filter}" if dept_filter else ""
         filename = f"odo_records{vehicle_suffix}{dept_suffix}_{start_date_str}_to_{end_date_str}.csv"
         return Response(
-            output.getvalue(),
+            "\ufeff" + output.getvalue(),
             mimetype="text/csv",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
@@ -5922,10 +5922,10 @@ def export_frequency_rate():
 
         output.seek(0)
 
-        # Return as downloadable CSV file
+        # Return as downloadable CSV file with UTF-8 BOM for Windows Excel compatibility
         filename = f"frequency_rate_{start_date_str}_to_{end_date_str}.csv"
         return Response(
-            output.getvalue(),
+            "\ufeff" + output.getvalue(),
             mimetype="text/csv",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
@@ -6129,10 +6129,10 @@ def export_difot():
 
         output.seek(0)
 
-        # Return as downloadable CSV file
+        # Return as downloadable CSV file with UTF-8 BOM for Windows Excel compatibility
         filename = f"difot_report_{start_date_str}_to_{end_date_str}.csv"
         return Response(
-            output.getvalue(),
+            "\ufeff" + output.getvalue(),
             mimetype="text/csv",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
@@ -6596,10 +6596,10 @@ def export_missing_data():
 
         output.seek(0)
 
-        # Return as downloadable CSV file
+        # Return as downloadable CSV file with UTF-8 BOM for Windows Excel compatibility
         filename = f"missing_data_report_{start_date_str}_to_{end_date_str}.csv"
         return Response(
-            output.getvalue(),
+            "\ufeff" + output.getvalue(),
             mimetype="text/csv",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
@@ -6717,10 +6717,10 @@ def export_driver_assistant_time_logs():
 
         output.seek(0)
 
-        # Return as downloadable CSV file
+        # Return as downloadable CSV file with UTF-8 BOM for Windows Excel compatibility
         filename = f"driver_assistant_time_logs_{start_date_str}_to_{end_date_str}.csv"
         return Response(
-            output.getvalue(),
+            "\ufeff" + output.getvalue(),
             mimetype="text/csv",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
@@ -7898,12 +7898,12 @@ def export_daily_vehicle_counts():
 
         output.seek(0)
 
-        # Return as downloadable CSV file
+        # Return as downloadable CSV file with UTF-8 BOM for Windows Excel compatibility
         filename = (
             f"daily_vehicle_counts_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
         )
         return Response(
-            output.getvalue(),
+            "\ufeff" + output.getvalue(),
             mimetype="text/csv",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
