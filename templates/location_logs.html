@@ -69,7 +69,12 @@
     <!-- Location Logs Table -->
     <div class="card">
       <div class="card-header">
-        <h6 class="mb-0">Location History ({{ pagination.total }} records)</h6>
+        <div class="d-flex justify-content-between align-items-center">
+          <h6 class="mb-0">Location History ({{ pagination.total }} records)</h6>
+          <button class="btn btn-sm btn-outline-primary" id="switch-to-map-btn">
+            <i class="bi bi-map"></i> View on Map
+          </button>
+        </div>
       </div>
       <div class="card-body">
         {% if location_logs %}
@@ -441,6 +446,13 @@
   // Vehicle filter change - reload
   document.getElementById('map-vehicle').addEventListener('change', function() {
     if (map) loadVehicleRoutes();
+  });
+
+  // Switch to map tab from table view button
+  document.getElementById('switch-to-map-btn').addEventListener('click', function() {
+    var mapTab = document.getElementById('map-tab');
+    var tab = new bootstrap.Tab(mapTab);
+    tab.show();
   });
 })();
     </script>
