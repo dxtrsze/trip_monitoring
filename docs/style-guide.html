@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trip Monitoring -- Style Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        /* ===== Design System CSS (copied from static/style.css and static/css/dashboard.css) ===== */
+        :root {
+            --primary: #4ECDC4;
+            --primary-dark: #2E8B82;
+            --secondary: #1A535C;
+            --accent: #FF6B6B;
+            --accent-light: #FF8E8E;
+            --background: #F7FFF7;
+            --white: #FFFFFF;
+            --gray-light: #E8ECEE;
+            --gray-medium: #6B7B7F;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: var(--background);
+            font-family: 'Outfit', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--secondary);
+            margin: 0; padding: 0; min-height: 100vh;
+ }
+        .navbar { background-color: var(--secondary) !important; box-shadow: 0 2px 10px rgba(26, 83, 92, 0.15); }
+        .navbar-brand { font-weight: 700; font-size: 1.4rem; color: var(--white) !important; }
+        .navbar-brand:hover { color: var(--primary) !important; }
+        .nav-link { color: rgba(255, 255, 255, 0.9) !important; font-weight: 500; transition: color 0.2s ease; }
+        .nav-link:hover { color: var(--primary) !important; }
+        .navbar-toggler { border-color: rgba(255, 255, 255, 0.3); }
+        .dropdown-menu { border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); padding: 8px; }
+        .dropdown-item { border-radius: 8px; padding: 10px 16px; font-weight: 500; transition: background-color 0.2s ease; }
+        .dropdown-item:hover { background-color: var(--gray-light); color: var(--secondary); }
+        .container { max-width: 1350px; }
+        .card { border: none; border-radius: 16px; box-shadow: 0 4px 20px rgba(26, 83, 92, 0.08); margin-bottom: 1.5rem; background-color: var(--white); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(26, 83, 92, 0.12); }
+        .card-header { background-color: var(--gray-light); border-bottom: 2px solid var(--primary); border-radius: 16px 16px 0 0 !important; padding: 1rem 1.5rem; font-weight: 600; color: var(--secondary); }
+        .btn { border-radius: 12px; font-weight: 600; padding: 0.625rem 1.5rem; transition: all 0.2s ease; border: none; }
+        .btn-primary { background-color: var(--primary); color: var(--white); }
+        .btn-primary:hover { background-color: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 4px 15px rgba(78, 205, 196, 0.4); }
+        .btn-success { background-color: var(--primary); color: var(--white); }
+        .btn-success:hover { background-color: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 4px 15px rgba(78, 205, 196, 0.4); }
+        .btn-danger { background-color: var(--accent); color: var(--white); }
+        .btn-danger:hover { background-color: var(--accent-light); transform: translateY(-2px); box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4); }
+        .btn-secondary { background-color: var(--gray-light); color: var(--secondary); }
+        .btn-secondary:hover { background-color: #D8DCDF; }
+        .btn-info { background-color: var(--primary); color: var(--white); }
+        .btn-info:hover { background-color: var(--primary-dark); }
+        .btn-warning { background-color: #FFE66D; color: var(--secondary); }
+        .btn-sm { padding: 0.375rem 0.875rem; font-size: 0.875rem; border-radius: 10px; }
+        .form-control, .form-select { border: 2px solid var(--gray-light); border-radius: 12px; padding: 0.75rem 1rem; font-size: 1rem; transition: all 0.2s ease; }
+        .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 0 3px rgba(78, 205, 196, 0.15); outline: none; }
+        .form-label { font-weight: 600; color: var(--secondary); margin-bottom: 0.5rem; }
+        .table { border-radius: 12px; overflow: hidden; }
+        .table thead th { background-color: var(--gray-light); color: var(--secondary); font-weight: 600; border-bottom: 2px solid var(--primary); padding: 1rem; vertical-align: middle; }
+        .table tbody td { padding: 1rem; vertical-align: middle; border-bottom: 1px solid var(--gray-light); color: var(--secondary); }
+        .table tbody tr { transition: background-color 0.2s ease; }
+        .table tbody tr:hover { background-color: rgba(78, 205, 196, 0.05); }
+        .table-responsive { border-radius: 12px; }
+        .badge { font-weight: 600; padding: 0.5rem 0.75rem; border-radius: 8px; }
+        .badge.bg-success { background-color: var(--primary) !important; color: var(--white) !important; }
+        .badge.bg-primary { background-color: var(--secondary) !important; color: var(--white) !important; }
+        .badge.bg-danger { background-color: var(--accent) !important; color: var(--white) !important; }
+        .badge.bg-warning { background-color: #FFE66D !important; color: var(--secondary) !important; }
+        .badge.bg-info { background-color: var(--primary) !important; color: var(--white) !important; }
+        .badge.bg-secondary { background-color: var(--gray-medium) !important; color: var(--white) !important; }
+        .alert { border: none; border-radius: 12px; border-left: 4px solid; padding: 1rem 1.5rem; }
+        .alert-info { background-color: rgba(78, 205, 196, 0.1); border-left-color: var(--primary); color: var(--secondary); }
+        .alert-success { background-color: rgba(78, 205, 196, 0.1); border-left-color: var(--primary); color: var(--secondary); }
+        .alert-danger { background-color: rgba(255, 107, 107, 0.1); border-left-color: var(--accent); color: var(--secondary); }
+        .alert-warning { background-color: rgba(255, 230, 109, 0.2); border-left-color: #FFE66D; color: var(--secondary); }
+        .modal-content { border: none; border-radius: 16px; box-shadow: 0 10px 40px rgba(26, 83, 92, 0.15); }
+        .modal-header { border-bottom: 2px solid var(--gray-light); background-color: var(--gray-light); border-radius: 16px 16px 0 0; padding: 1.25rem 1.5rem; }
+        .modal-title { font-weight: 700; color: var(--secondary); }
+        .modal-body { padding: 1.5rem; color: var(--secondary); }
+        .modal-footer { border-top: 2px solid var(--gray-light); background-color: var(--gray-light); border-radius: 0 0 16px 16px; padding: 1rem 1.5rem; }
+        footer { margin-top: 3rem; background-color: var(--gray-light); border-top: 2px solid var(--primary); padding: 2rem 0; color: var(--secondary); }
+        a { color: var(--primary); text-decoration: none; transition: color 0.2s ease; }
+        a:hover { color: var(--primary-dark); }
+        h1, h2, h3, h4, h5, h6 { color: var(--secondary); font-weight: 700; }
+        h1 { font-size: 2rem; margin-bottom: 1.5rem; }
+        h2 { font-size: 1.75rem; margin-bottom: 1.25rem; }
+        .page-link { color: var(--primary); border: 2px solid var(--gray-light); border-radius: 10px; margin: 0 0.25rem; transition: all 0.2s ease; }
+        .page-link:hover { background-color: var(--primary); color: var(--white); border-color: var(--primary); }
+        .page-item.active .page-link { background-color: var(--primary); border-color: var(--primary); }
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: var(--gray-light); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
+        .spinner-border { color: var(--primary); }
+        .progress { height: 12px; border-radius: 10px; background-color: var(--gray-light); }
+        .progress-bar { background-color: var(--primary); }
+        .input-group-text { background-color: var(--gray-light); border: 2px solid var(--gray-light); color: var(--secondary); border-radius: 12px 0 0 12px; }
+        .input-group .form-control:first-child { border-radius: 12px 0 0 12px; }
+        .input-group .form-control:last-child, .input-group .btn:last-child { border-radius: 0 12px 12px 0; }
+        .form-check-input { border: 2px solid var(--gray-medium); border-radius: 6px; }
+        .form-check-input:checked { background-color: var(--primary); border-color: var(--primary); }
+        .nav-tabs { border-bottom: 2px solid var(--gray-light); }
+        .nav-tabs .nav-link { color: var(--gray-medium); border: none; border-bottom: 3px solid transparent; padding: 0.75rem 1.25rem; font-weight: 600; }
+        .nav-tabs .nav-link:hover { border-bottom-color: var(--gray-light); color: var(--secondary); }
+        .nav-tabs .nav-link.active { background-color: transparent; color: var(--primary); border-bottom-color: var(--primary); }
+        .table-compact { font-size: 0.85rem; }
+        .table-compact thead th { white-space: nowrap; }
+        .table .text-primary, .navbar .text-primary { color: var(--primary) !important; }
+        .table .text-success, .navbar .text-success { color: var(--primary) !important; }
+        .table .text-danger, .navbar .text-danger { color: var(--accent) !important; }
+        .table .text-info, .navbar .text-info { color: var(--primary) !important; }
+        .is-invalid { border-color: var(--accent) !important; }
+        .invalid-feedback { color: var(--accent); }
+        .is-valid { border-color: var(--primary) !important; }
+        .valid-feedback { color: var(--primary); }
+        @media (max-width: 767.98px) {
+ .table-responsive { font-size: 0.875rem; }
+            .btn-sm { padding: 0.375rem 0.625rem; font-size: 0.75rem; }
+            .card { margin-bottom: 1rem; }
+            h1 { font-size: 1.5rem; }
+            h2 { font-size: 1.25rem; }
+        }
+        @keyframes slideDown {
+ from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; }
+        }
+        #errorBanner.show { animation: slideDown 0.3s ease-out; }
+
+        .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.8); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        .loading-spinner { width: 3rem; height: 3rem; }
+
+        /* ===== Style Guide Page Styles ===== */
+        .guide-sidebar {
+ position: fixed; top: 0; left: 0; width: 260px; height: 100vh; background: var(--secondary); overflow-y: auto; z-index: 1000; padding: 1.5rem 0; }
+        .guide-sidebar .nav-link { display: block; color: rgba(255, 255, 255, 0.8); padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; }
+        .guide-sidebar .nav-link:hover,
+        .guide-sidebar .nav-link.active { color: var(--white); background: var(--primary); }
+        .guide-main { margin-left: 260px; padding: 2rem 3rem; }
+        .guide-section { padding: 3rem 0; border-bottom: 1px solid var(--gray-light); }
+        .guide-section:last-child { border-bottom: none; }
+        .section-title { font-size: 1.1rem; font-weight: 700; color: var(--secondary); margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-left: 4px solid var(--primary); }
+        .swatch-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+        .swatch { width: 80px; height: 80px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.75rem; }
+        .code-block { background: #f4f8fa; border-radius: 12px; padding: 1rem; font-size: 0.85rem; color: var(--secondary); overflow-x: auto; margin-bottom: 1rem; }
+        .component-demo { padding: 1.5rem; background: var(--white); border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 1.5rem; }
+    </style>
+</head>
+<body>
+NavigationView class="guide-sidebar">
+ position="fixed" top=" 0; left: 0; width: 260px; height: 100vh; background: var(--secondary); overflow-y: auto; z-index: 1000; padding: 1.5rem 0;">
+        <a href="#colors" class="nav-link active">Colors</a>
+        <a href="#typography" class="nav-link">Typography</a>
+        <a href="#buttons" class="nav-link">Buttons</a>
+        <a href="#forms" class="nav-link">Forms</a>
+        <a href="#tables" class="nav-link">Tables</a>
+        <a href="#badges" class="nav-link">Badges</a>
+        <a href="#alerts" class="nav-link">Alerts</a>
+        <a href="#cards" class="nav-link">Cards</a>
+        <a href="#modals" class="nav-link">Modals</a>
+        <a href="#pagination" class="nav-link">Pagination</a>
+        <a href="#navtabs" class="nav-link">Nav Tabs</a>
+        <a href="#progress" class="nav-link">Progress Bars</a>
+        <a href="#icons" class="nav-link">Icons</a>
+        <a href="#spinner" class="nav-link">Loading Spinner</a>
+        <a href="#scrollbar" class="nav-link">Scrollbar</a>
+        <a href="#footer" class="nav-link">Footer</a>
+        <a href="#validation" class="nav-link">Validation</a>
+        <a href="#dashboard" class="nav-link">Dashboard</a>
+        <a href="#page-headers" class="nav-link">Page Headers</a>
+        <a href="#search" class="nav-link">Search Pattern</a>
+    </nav>
+    <div class="guide-main">
+ id="content">
+
+        <!-- ===================== COLORS ===================== -->
+        <div class="guide-section" id="colors">
+            <h2 class="section-title">Color Palette</h2>
+            <div class="row">
+                <div class="swatch" style="background: var(--primary);"><div style="background: var(--primary);"></div><br><span>Primary</span><code>#4ECDC4</code></div>
+                <div class="swatch" style="background: var(--primary-dark);"><div style="background: var(--primary-dark);"></div><br><span>Primary Dark</span><code>#2E8B82</code></div>
+                <div class="swatch" style="background: var(--secondary);"><div style="background: var(--secondary);"></div><br><span>Secondary</span><code>#1A535C</code></div>
+                <div class="swatch" style="background: var(--accent);"><div style="background: var(--accent);"></div><br><span>Accent</span><code>#FF6B6B</code></div>
+                <div class="swatch" style="background: var(--accent-light);"><div style="background: var(--accent-light);"></div><br><span>Accent Light</span><code>#FF8E8E</code></div>
+                <div class="swatch" style="background: var(--background);"><div style="background: var(--background);"></div><br><span>Background</span><code>#F7FFF7</code></div>
+                <div class="swatch" style="background: var(--white); border: 1px solid #ddd;"><div style="background: var(--white); border: 1px solid #ddd;"></div><br><span>White</span><code>#FFFFFF</code></div>
+                <div class="swatch" style="background: var(--gray-light);"><div style="background: var(--gray-light);"></div><br><span>Gray Light</span><code>#E8ECEE</code></div>
+                <div class="swatch" style="background: var(--gray-medium);"><div style="background: var(--gray-medium);"></div><br><span>Gray Medium</span><code>#6B7B7F</code></div>
+                <div class="swatch" style="background: #FFE66D;"><div style="background: #FFE66D;"></div><br><span>Warning Yellow</span><code>#FFE66D</code></div>
+            </div>
+        </div>
+
+        <!-- ===================== TYPOGRAPHY ===================== -->
+        <div class="guide-section" id="typography">
+            <h2 class="section-title">Typography</h2>
+            <p>Font: <strong>Outfit</strong>, 'Segoe UI', system stack. We300-700 weights.</p>
+            <h1>Heading 1 <small>2rem / 700</small></h1>
+            <h2>Heading 2 <small>1.75rem / 700</small></h2>
+            <h3>Heading 3</h3>
+            <h4>Heading 4</h4>
+            <h5>Heading 5</h5>
+            <h6>Heading 6</h6>
+            <p class="text-muted">Body text uses <code>var(--secondary)</code> color. Links use <code>var(--primary)</code> and turn <code>var(--primary-dark)}</code> on hover.</ Muted text uses <code>var(--gray-medium)</code> or <code>text-muted</code>.</p>
+            <div class="component-demo">
+ style="max-width: 400px;">
+                <h1>Heading 1</h1>
+                <h2>Heading 2</h2>
+                <h3>Heading 3</h3>
+                <h4>Heading 4</h4>
+                <h5>Heading 5</h5>
+                <h6>Heading 6</h6>
+                <p>This is regular body text with <a href="#">a standard link</a> and <span class="text-muted">This is muted helper text</span>.</p>
+            </div>
+            <div class="code-block"><pre>
+&lt;!-- Headings --&gt;
+&lt;h1&gt;Heading 1&lt;/h1&gt;
+&lt;h2&gt;Heading 2&lt;/h2&gt;
+&lt;h3&gt;Heading 3&lt;/h3&gt;
+
+&lt;!-- Body text, links, muted --&gt;
+&lt;p&gt;Body text with &lt;a href="#"&gt;link&lt;/a&gt&gt;
+&lt;span class="text-muted"&gt;Muted text&lt;/span&gt;</pre>
+            </div>
+        </div>
+
+        <!-- ===================== BUTTONS ===================== -->
+        <div class="guide-section" id="buttons">
+            <h2 class="section-title">Buttons</h2>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <h6>Standard Sizes</h6>
+                    <button class="btn btn-primary mb-2">Primary</button>
+                    <button class="btn btn-success mb-2">Success</button>
+                    <button class="btn btn-danger mb-2">Danger</button>
+                    <button class="btn btn-secondary mb-2">Secondary</button>
+                    <button class="btn btn-info mb-2">Info</button>
+                    <button class="btn btn-warning mb-2">Warning</button>
+                </div>
+                <div class="col-md-6">
+                    <h6>Outline Variants</h6>
+                    <button class="btn btn-outline-primary mb-2">Outline Primary</button>
+                    <button class="btn btn-outline-success mb-2">Outline Success</button>
+                    <button class="btn btn-outline-danger mb-2">Outline Danger</button>
+                    <button class="btn btn-outline-secondary mb-2">Outline Secondary</button>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <h6>Small Buttons</h6>
+                    <button class="btn btn-sm btn-primary">Small Primary</button>
+                    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Delete</button>
+                    <button class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Edit</button>
+                </div>
+                <div class="col-md-6">
+                    <h6>With Icons</h6>
+                    <button class="btn btn-primary"><i class="bi bi-plus-circle"></i> Add New</button>
+                    <button class="btn btn-success"><i class="bi bi-cloud-upload"></i> Upload</button>
+                    <button class="btn btn-danger"><i class="bi bi-trash"></i> Delete</button>
+                    <button class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Back</button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12">
+                    <h6>Full Width / Block Level</h6>
+                    <div class="d-grid">
+                        <button class="btn btn-primary btn-lg">Login</button>
+                    </div>
+                    <button class="btn btn-primary w-100 mb-3">Full Width Button</button>
+                </div>
+            </div>
+            <div class="code-block"><pre>
+&lt;!-- Standard buttons --&gt;
+&lt;button class="btn btn-primary"&gt;Primary&lt;/button&gt;
+&lt;button class="btn btn-success"&gt;Success&lt;/button&gt;
+&lt;button class="btn btn-danger"&gt;Danger&lt;/button&gt;
+&lt;button class="btn btn-secondary"&gt;Secondary&lt;/button&gt;
+
+&lt;!-- Outline buttons --&gt;
+&lt;button class="btn btn-outline-primary"&gt;Outline Primary&lt;/button&gt;
+&lt;button class="btn btn-outline-danger"&gt;Outline Danger&lt;/button&gt;
+
+&lt;!-- Small buttons --&gt;
+&lt;button class="btn btn-sm btn-outline-primary"&gt;
+    &lt;i class="bi bi-pencil"&gt;&lt;/i&gt; Edit
+button&gt;
+&lt;button class="btn btn-sm btn-outline-danger"&gt;
+    &lt;i class="bi bi-trash"&gt;&lt;/i&gt; Delete
+button&gt;
+
+&lt;!-- Full width --&gt;
+&lt;button class="btn btn-primary w-100"&gt;Full Width Button&lt;/button&gt;
+
+&lt;!-- Block level (d-grid) --&gt;
+&lt;button class="btn btn-primary btn-lg"&gt;Login&lt;/button&gt;</pre>
+            </div>
+        </div>
+
+        <!-- ===================== FORMS ===================== -->
+        <div class="guide-section" id="forms">
+            <h2 class="section-title">Forms</h2>
+            <div class="component-demo">
+ style="max-width: 600px;">
+                <div class="mb-3">
+                    <label for="demo-text" class="form-label">Text Input</label>
+                    <input type="text" class="form-control" id="demo-text" placeholder="Enter text...">
+                </div>
+                <div class="mb-3">
+                    <label for="demo-date" class="form-label">Date Input</label>
+                    <input type="date" class="form-control" id="demo-date">
+ placeholder="YYYY-MM-DD">
+                </div>
+                <div class="mb-3">
+                    <label for="demo-select" class="form-label">Select Input</label>
+                    <select class="form-select" id="demo-select">
+                        <option value="">Choose an option...</option>
+                        <option value="1">Logistics</option>
+                        <option value="2">Executive</option>
+                        <option value="3">Service</option>                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="demo-textarea" class="form-label">Textarea</label>
+                    <textarea class="form-control" id="demo-textarea" rows="3" placeholder="Enter details..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Search Input Group</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Search...">
+                        <button class="btn btn-primary"><i class="bi bi-search"></i> Search</button>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Checkboxes</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="demo-check1" checked>
+                        <label class="form-check-label" for="demo-check1">Checked checkbox</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="demo-check2">
+                        <label class="form-check-label" for="demo-check2">Unchecked checkbox</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="demo-valid" class="form-label">Valid Input</label>
+                    <input type="text" class="form-control is-valid" id="demo-valid" value="Valid value">
+                    <div class="valid-feedback">Looks good!</div>
+                </div>
+                <div class="mb-3">
+                    <label for="demo-invalid" class="form-label">Invalid Input</label>
+                    <input type="text" class="form-control is-invalid" id="demo-invalid" value="Invalid value">
+                    <div class="invalid-feedback">Please provide a valid value.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Form Switch</label>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="demo-switch" checked>
+                        <label class="form-check-label" for="demo-switch">Auto-refresh</label>
+                    </div>
+                </div>
+                <div class="form-text">Helper text goes below inputs.</div>
+            </div>
+            <div class="code-block"><pre>
+&lt;!-- Text input --&gt;
+&lt;input type="text" class="form-control" placeholder="Enter text..."&gt;
+
+&lt;!-- Date input --&gt;
+&lt;input type="date" class="form-control"&gt;
+
+&lt;!-- Select --&gt;
+&lt;select class="form-select"&gt;
+    &lt;option&gt;Choose...&lt;/option&gt;
+    &lt;option&gt;Option 1&lt;/option&gt;
+&lt;/select&gt;
+
+&lt;!-- Textarea --&gt;
+&lt;textarea class="form-control" rows="3"&gt;&lt;/textarea&gt;
+
+&lt;!-- Input group with search --&gt;
+&lt;div class="input-group"&gt;
+    &lt;input type="text" class="form-control" placeholder="Search..."&gt;
+    &lt;button class="btn btn-primary"&gt;
+        &lt;i class="bi bi-search"&gt;&lt;/i&gt; Search
+button&gt;
+&lt;/div&gt;
+
+&lt;!-- Validation states --&gt;
+&lt;input class="form-control is-valid"&gt;
+&lt;div class="valid-feedback"&gt;Looks good!&lt;/div&gt;
+&lt;input class="form-control is-invalid"&gt;
+&lt;div class="invalid-feedback"&gt;Error message&lt;/div&gt;
+
+&lt;!-- Checkbox --&gt;
+&lt;div class="form-check"&gt;
+    &lt;input class="form-check-input" type="checkbox" checked&gt;
+    &lt;label class="form-check-label"&gt;Label&lt;/label&gt;
+&lt;/div&gt;
+
+&lt;!-- Switch --&gt;
+&lt;div class="form-check form-switch"&gt;
+    &lt;input class="form-check-input" type="checkbox"&gt;
+    &lt;label class="form-check-label"&gt;Toggle&lt;/label&gt;
+&lt;/div&gt;</pre>
+            </div>
+        </div>
+
+        <!-- ===================== TABLES ===================== -->
+        <div class="guide-section" id="tables">
+            <h2 class="section-title">Tables</h2>
+            <div class="component-demo">
+                <h6>Standard Table</h6>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>001</td>
+                                <td>ABC-1234</td>
+                                <td><span class="badge bg-info">Logistics</span></td>
+                                <td><span class="badge bg-success">Active</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Edit</button>
+                                    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>002</td>
+                                <td>XYZ-5678</td>
+                                <td><span class="badge bg-primary">Executive</span></td>
+                                <td><span class="badge bg-secondary">Inactive</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Edit</button>
+                                    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>003</td>
+                                <td>DEF-9012</td>
+                                <td><span class="badge bg-info">Service</span></td>
+                                <td><span class="badge bg-success">Active</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Edit</button>
+                                    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <h6 class="mt-3">Compact Table</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped table-hover table-compact">
+                        <thead>
+                            <tr>
+                                <th>Doc #</th>
+                                <th>Branch</th>
+                                <th>Qty</th>
+                                <th>CBM</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>SO-001</td>
+                                <td>Manila</td>
+                                <td>150</td>
+                                <td>12.50</td>
+                                <td><span class="badge bg-success">Delivered</span></td>
+                            </tr>
+                            <tr>
+                                <td>SO-002</td>
+                                <td>Cebu</td>
+                                <td>80</td>
+                                <td>8.30</td>
+                                <td><span class="badge bg-warning">Pending</span></td>
+                            </tr>
+                            <tr>
+                                <td>SO-003</td>
+                                <td>Davao</td>
+                                <td>200</td>
+                                <td>15.00</td>
+                                <td><span class="badge bg-danger">Cancelled</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="code-block"><pre>
+&lt;!-- Standard table --&gt;
+&lt;table class="table table-striped table-hover"&gt;
+    &lt;thead&gt;...&lt;/thead&gt;
+    &lt;tbody&gt;...&lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;!-- Compact table --&gt;
+&lt;table class="table table-sm table-striped table-hover table-compact"&gt;
+    &lt;thead&gt;...&lt;/thead&gt;
+    &lt;tbody&gt;...&lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;!-- Always wrap in table-responsive --&gt;
+&lt;div class="table-responsive"&gt;
+    &lt;table class="table ..."&gt;...&lt;/table&gt;
+&lt;/div&gt;</pre>
+            </div>
+        </div>
+
+        <!-- ===================== BADGES ===================== -->
+        <div class="guide-section" id="badges">
+            <h2 class="section-title">Badges</h2>
+            <div class="component-demo">
+                <h6>Status Badges</h6>
+                <div class="mb-3">
+                    <span class="badge bg-success me-2">Success / Delivered</span>
+                    <span class="badge bg-primary me-2">Primary / Admin</span>
+                    <span class="badge bg-danger me-2">Danger / Error</span>
+                    <span class="badge bg-warning me-2">Warning / Pending</span>
+                    <span class="badge bg-info me-2">Info</span>
+                    <span class="badge bg-secondary me-2">Secondary</span>
+                </div>
+                <h6>Usage Examples</h6>
+                <div class="mb-2">
+                    <span class="badge bg-primary">Trip #1</span>
+                    <span class="badge bg-success">Complete</span>
+                    <span class="badge bg-warning text-dark">Active</span>
+                    <span class="badge bg-danger">Incomplete Trip</span>
+                    <span class="badge bg-info">Today</span>
+                    <span class="badge bg-info">1st</span>
+                    <span class="badge bg-secondary">Not Scheduled</span>
+                </div>
+                <h6>With Icons</h6>
+                <div>
+                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Completed</span>
+                    <span class="badge bg-info"><i class="bi bi-clock-history"></i> Pending</span>
+                </div>
+            </div>
+            <div class="code-block"><pre>
+&lt;span class="badge bg-success"&gt;Delivered&lt;/span&gt;
+&lt;span class="badge bg-primary"&gt;Trip #1&lt;/span&gt;
+&lt;span class="badge bg-danger"&gt;Cancelled&lt;/span&gt;
+&lt;span class="badge bg-warning"&gt;Pending&lt;/span&gt;
+&lt;span class="badge bg-info"&gt;Today&lt;/span&gt;
+&lt;span class="badge bg-secondary"&gt;Not Scheduled&lt;/span&gt;
+
+&lt;!-- With icons --&gt;
+&lt;span class="badge bg-success"&gt;
+    &lt;i class="bi bi-check-circle"&gt;&lt;/i&gt; Completed
+&lt;/span&gt;</pre>
+            </div>
+        </div>
+
+        <!-- ===================== ALERTS ===================== -->
+        <div class="guide-section" id="alerts">
+            <h2 class="section-title">Alerts</h2>
+            <div class="component-demo">
+                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Info:</strong> This is an informational message.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle me-2"></i>
+                    <strong>Success:</strong> Record saved successfully!
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Error:</strong> Something went wrong.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Warning:</strong> Please check your input.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            </div>
+            <div class="code-block"><pre>
+&lt;div class="alert alert-info alert-dismissible fade show" role="alert"&gt;
+    &lt;i class="bi bi-info-circle me-2"&gt;&lt;/i&gt;
+    &lt;strong&gt;Info:&lt;/strong&gt; Message text.
+    &lt;button type="button" class="btn-close"
+ data-bs-dismiss="alert"&gt;&lt;/button&gt;
+&lt;/div&gt;
+
+&lt;!-- Alert types: alert-info, alert-success, alert-danger  alert-warning --&gt;</pre>
+            </div>
+        </div>
+
+        <!-- ===================== CARDS ===================== -->
+        <div class="guide-section" id="cards">
+            <h2 class="section-title">Cards</h2>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <h6>Standard Card</h6>
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-truck me-1"></i> Card with Header</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">Card body content goes here. Cards use <code>border-radius: 16px</code> and subtle shadows.</p>
+                            <button class="btn btn-primary">Action</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6>Card without Header</h6>
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Card Title</h5>
+                            <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+                            <a href="#" class="btn btn-primary">Go somewhere</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <h6>Report Card Pattern</h6>
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-fuel-pump"></i> Fuel Efficiency</h5>
+                        </div>
+                        <div class="card-body">
+                            <form>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Start Date</label>
+                                        <input type="date" class="form-control">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">End Date</label>
+                                        <input type="date" class="form-control">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-graph-up"></i> View Report
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <h6>Dashboard Section Card</h6>
+                    <div class="card section-card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-graph-up me-1"></i> Daily Delivery Counts</h5>
+                        </div>
+                        <div class="card-body">
+                            <div style="height: 100px; background: linear-gradient(135deg, rgba(78,205,196,0.1), rgba(255,107,107,0.1)); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--gray-medium);">
+                                Chart Placeholder
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <h6>Card with Badges</h6>
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                Schedule #42
+                                <span class="badge bg-info ms-2">Info</span>
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Date:</strong> January 15, 2026</p>
+                            <p><strong>Status:</strong> <span class="badge bg-success">Complete</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="code-block"><pre>
+&lt;!-- Standard card --&gt;
+&lt;div class="card"&gt;
+    &lt;div class="card-header"&gt;
+        &lt;h5 class="mb-0"&gt;Title&lt;/h5&gt;
+    &lt;/div&gt;
+    &lt;div class="card-body"&gt;
+        Content here
+    &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;!-- Equal height cards --&gt;
+&lt;div class="card h-100"&gt;...&lt;/div&gt;
+
+&lt;!-- Dashboard section card --&gt;
+&lt;div class="card section-card"&gt;...&lt;/div&gt;</pre>
+            </div>
+        </div>
+
+        <!-- ===================== MODALS ===================== -->
+        <div class="guide-section" id="modals">
+            <h2 class="section-title">Modals</h2>
+            <div class="component-demo">
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#demoModal">
+                    Open Demo Modal
+                </button>
+                <button class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#demoDeleteModal">
+                    Open Delete Modal
+                </button>
+            </div>
+            <div class="code-block"><pre>
+&lt;!-- Standard modal --&gt;
+&lt;div class="modal fade" id="demoModal" tabindex="-1"&gt;
+    &lt;div class="modal-dialog"&gt;
+        &lt;div class="modal-content"&gt;
+            &lt;div class="modal-header"&gt;
+                &lt;h5 class="modal-title"&gt;Modal Title&lt;/h5&gt;
+                &lt;button type="button" class="btn-close" data-bs-dismiss="modal"&gt;&lt;/button&gt;
+            &lt;/div&gt;
+            &lt;div class="modal-body"&gt;
+                &lt;div class="mb-3"&gt;
+                    &lt;label class="form-label"&gt;Field&lt;/label&gt;
+                    &lt;input type="text" class="form-control"&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+            &lt;div class="modal-footer"&gt;
+                &lt;button class="btn btn-secondary" data-bs-dismiss="modal"&gt;Cancel&lt;/button&gt;
+                &lt;button class="btn btn-primary"&gt;Save&lt;/button&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</pre>
+            </div>
+
+            <!-- Demo Modal -->
+            <div class="modal fade" id="demoModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Add New Vehicle</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Plate Number</label>
+                                <input type="text" class="form-control" placeholder="ABC-1234">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Capacity</label>
+                                <input type="number" class="form-control" placeholder="0">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Department</label>
+                                <select class="form-select">
+                                    <option value="">Select department</option>
+                                    <option>Logistics</option>
+                                    <option>Executive</option>
+                                    <option>Service</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary">Add Vehicle</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delete Demo Modal -->
+            <div class="modal fade" id="demoDeleteModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Delete Record</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Are you sure you want to delete this record? This action cannot be undone.</p>
+                            <div class="mb-3">
+                                <label class="form-label">Delete Reason</label>
+                                <select class="form-select">
+                                    <option value="">Select a reason...</option>
+                                    <option>DUPLICATE ENTRY</option>
+                                    <option>DATA ENTRY ERROR</option>
+                                    <option>CUSTOMER REQUEST</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-danger">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================== PAGINATION ===================== -->
+        <div class="guide-section" id="pagination">
+            <h2 class="section-title">Pagination</h2>
+            <div class="component-demo">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item disabled"><a class="page-link" href="#" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>
+                        <li class="page-item"><a class="page-link" href="#">1</a></li>
+                        <li class="page-item active"><span class="page-link">2</span></li>
+                        <li class="page-item"><a class="page-link" href="#">3</a></li>
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                        <li class="page-item"><a class="page-link" href="#">8</a></li>
+                        <li class="page-item"><a class="page-link" href="#" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>
+                    </ul>
+                    <div class="text-center text-muted"><small>Showing 2 of 8 pages (120 total records)</small></div>
+                </nav>
+            </div>
+            <div class="code-block"><pre>
+&lt;nav aria-label="Page navigation"&gt;
+    &lt;ul class="pagination justify-content-center"&gt;
+        &lt;li class="page-item disabled"&gt;
+            &lt;a class="page-link" href="#" aria-label="Previous"&gt;
+                &lt;span aria-hidden="true"&gt;&amp;laquo;&lt;/span&gt;
+            &lt;/a&gt;
+        &lt;/li&gt;
+        &lt;li class="page-item active"&gt;
+            &lt;span class="page-link"&gt;2&lt;/span&gt;
+        &lt;/li&gt;
+        &lt;li class="page-item"&gt;
+            &lt;a class="page-link" href="#"&gt;3&lt;/a&gt;
+        &lt;/li&gt;
+        &lt;li class="page-item"&gt;
+            &lt;a class="page-link" href="#" aria-label="Next"&gt;
+                &lt;span aria-hidden="true"&gt;&amp;raquo;&lt;/span&gt;
+            &lt;/a&gt;
+        &lt;/li&gt;
+    &lt;/ul&gt;
+&lt;/nav&gt;</pre>
+            </div>
+        </div>
+
+        <!-- ===================== NAV TABS ===================== -->
+        <div class="guide-section" id="navtabs">
+            <h2 class="section-title">Nav Tabs</h2>
+            <div class="component-demo">
+                <ul class="nav nav-tabs">
+                    <li class="nav-item"><a class="nav-link active" href="#">Active Tab</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Tab 2</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Tab 3</a></li>
+                </ul>
+            </div>
+            <div class="code-block"><pre>
+&lt;ul class="nav nav-tabs"&gt;
+    &lt;li class="nav-item"&gt;
+        &lt;a class="nav-link active" href="#"&gt;Active Tab&lt;/a&gt;
+    &lt;/li&gt;
+    &lt;li class="nav-item"&gt;
+        &lt;a class="nav-link" href="#"&gt;Tab 2&lt;/a&gt;
+    &lt;/li&gt;
+&lt;/ul&gt;</pre>
+            </div>
+        </div>
+
+        <!-- ===================== PROGRESS ===================== -->
+        <div class="guide-section" id="progress">
+            <h2 class="section-title">Progress Bars</h2>
+            <div class="component-demo">
+                <div class="mb-2"><label class="form-label">Truck Utilization (85%)</label></div>
+                <div class="progress mb-3">
+                    <div class="progress-bar" role="progressbar" style="width: 85%" aria-valuenow="85" aria-valuemin="0" aria-valuemax="100">85%</div>
+                </div>
+                <div class="mb-2"><label class="form-label">On-Time Delivery (62%)</label></div>
+                <div class="progress mb-3">
+                    <div class="progress-bar" role="progressbar" style="width: 62%" aria-valuenow="62">62%</div>
+                </div>
+                <div class="mb-2"><label class="form-label">Data Completeness (35%)</label></div>
+                <div class="progress mb-3">
+                    <div class="progress-bar" role="progressbar" style="width: 35%">35%</div>
+                </div>
+            </div>
+            <div class="code-block"><pre>
+&lt;div class="progress"&gt;
+    &lt;div class="progress-bar" style="width: 85%"&gt;85%&lt;/div&gt;
+&lt;/div&gt;</pre>
+            </div>
+        </div>
+
+        <!-- ===================== ICONS ===================== -->
+        <div class="guide-section" id="icons">
+            <h2 class="section-title">Bootstrap Icons (Common)</h2>
+            <div class="component-demo">
+                <div class="row">
+                    <div class="col-md-3 mb-2"><i class="bi bi-truck me-2"></i> <code>bi-truck</code></div>
+                    <div class="col-md-3 mb-2"><i class="bi bi-calendar-check me-2"></i> <code>bi-calendar-check</code></div>
+                    <div class="col-md-3 mb-2"><i class="bi bi-search me-2"></i> <code>bi-search</code></div>
+                    <div class="col-md-3 mb-2"><i class="bi bi-pencil me-2"></i> <code>bi-pencil</code></div>
+                    <div class="col-md-3 mb-2"><i class="bi bi-trash me-2"></i> <code>bi-trash</code></div>
+                    <div class="col-md-3 mb-2"><i class="bi bi-plus-circle me-2"></i> <code>bi-plus-circle</code></div>
+                    <div class="col-md-3 mb-2"><i class="bi bi-cloud-upload me-2"></i> <code>bi-cloud-upload</code></div>
+                    <div class="col-md-3 mb-2"><i class="bi bi-download me-2"></i> <code>bi-download</code></div>
+                    <div class="col-md-3 mb-2"><i class="bi bi-arrow-left me-2"></i> <code>bi-arrow-left</code></div>
+                    <div class="col-md-3 mb-2"><i class="bi bi-speedometer2 me-2"></i> <code>bi-speedometer2</code></div>
+                    <div class="col-md-3 mb-2"><i class="bi bi-graph-up me-2"></i> <code>bi-graph-up</code></div>
+                    <div class="col-md-3 mb-2"><i class="bi bi-clock-history me-2"></i> <code>bi-clock-history</code></div>
+                    <div class="col-md-3 mb-2"><i class="bi bi-fuel-pump me-2"></i> <code>bi-fuel-pump</code></div>
+                    <div class="col-md-3 mb-2"><i class="bi bi-person-circle me-2"></i> <code>bi-person-circle</code></div>
+                    <div class="col-md-3 mb-2"><i class="bi bi-check-circle me-2"></i> <code>bi-check-circle</code></div>
+                    <div class="col-md-3 mb-2"><i class="bi bi-exclamation-triangle me-2"></i> <code>bi-exclamation-triangle</code></div>
+                </div>
+            </div>
+            <div class="code-block"><pre>
+&lt;!-- Usage patterns --&gt;
+&lt;i class="bi bi-truck"&gt;&lt;/i&gt;                     &lt;!-- Standalone icon --&gt;
+&lt;button class="btn btn-primary"&gt;
+    &lt;i class="bi bi-plus-circle"&gt;&lt;/i&gt; Add New  &lt;!-- In button --&gt;
+&lt;/button&gt;
+&lt;i class="bi bi-pencil me-1"&gt;&lt;/i&gt; Edit    &lt;!-- With text --&gt;</pre>
+            </div>
+        </div>
+
+        <!-- ===================== SPINNER ===================== -->
+        <div class="guide-section" id="spinner">
+            <h2 class="section-title">Loading Spinner</h2>
+            <div class="component-demo">
+                <div class="spinner-border me-3" role="status">
+ style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+            <div class="code-block"><pre>
+&lt;div class="spinner-border" role="status"&gt;
+    &lt;span class="visually-hidden"&gt;Loading...&lt;/span&gt;
+&lt;/div&gt;
+
+&lt;!-- Full overlay --&gt;
+&lt;div class="loading-overlay"&gt;
+    &lt;div class="spinner-border loading-spinner"&gt;&lt;/div&gt;
+&lt;/div&gt;</pre>
+            </div>
+        </div>
+
+        <!-- ===================== SCROLLBAR ===================== -->
+        <div class="guide-section" id="scrollbar">
+            <h2 class="section-title">Custom Scrollbar</h2>
+            <div class="component-demo" style="max-height: 150px; overflow-y: auto;">
+                <p>The custom scrollbar uses <code>var(--primary)</code> for the thumb and <code>var(--gray-light)</code> for the track.</p>
+                <p>Scroll down to see it in action...</p>
+                <p>Content block 1</p>
+                <p>Content block 2</p>
+                <p>Content block 3</p>
+                <p>Content block 4</p>
+                <p>Content block 5</p>
+                <p>Content block 6</p>
+                <p>Content block 7</p>
+                <p>Content block 8</p>
+                <p>Content block 9</p>
+                <p>Content block 10</p>
+            </div>
+        </div>
+
+        <!-- ===================== FOOTER ===================== -->
+        <div class="guide-section" id="footer">
+            <h2 class="section-title">Footer</h2>
+            <div class="component-demo" style="border-radius: 16px; overflow: hidden;">
+                <footer style="margin-top: 0;">
+                    <div class="text-center p-3">
+                        <strong>&copy; 2026 Trip Monitoring System</strong>
+                    </div>
+                </footer>
+            </div>
+            <div class="code-block"><pre>
+&lt;footer&gt;
+    &lt;div class="text-center p-3"&gt;
+        &lt;strong&gt;&amp;copy; 2026 Trip Monitoring System&lt;/strong&gt;
+    &lt;/div&gt;
+&lt;/footer&gt;</pre>
+            </div>
+        </div>
+
+        <!-- ===================== VALIDATION ===================== -->
+        <div class="guide-section" id="validation">
+            <h2 class="section-title">Form Validation</h2>
+            <div class="component-demo" style="max-width: 400px;">
+                <div class="mb-3">
+                    <label class="form-label">Valid Field</label>
+                    <input type="text" class="form-control is-valid" value="Correct value">
+                    <div class="valid-feedback">Looks good!</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Invalid Field</label>
+                    <input type="text" class="form-control is-invalid" value="Bad value">
+                    <div class="invalid-feedback">Please fix this error.</div>
+                </div>
+            </div>
+            <div class="code-block"><pre>
+&lt;!-- Valid --&gt;
+&lt;input class="form-control is-valid"&gt;
+&lt;div class="valid-feedback"&gt;Looks good!&lt;/div&gt;
+
+&lt;!-- Invalid --&gt;
+&lt;input class="form-control is-invalid"&gt;
+&lt;div class="invalid-feedback"&gt;Error message&lt;/div&gt;</pre>
+            </div>
+        </div>
+
+        <!-- ===================== DASHBOARD ===================== -->
+        <div class="guide-section" id="dashboard">
+            <h2 class="section-title">Dashboard Components</h2>
+            <div class="component-demo">
+                <h6>Section Title Pattern</h6>
+                <div class="d-flex align-items-center mb-3">
+                    <h2 class="section-title mb-0">Performance Metrics</h2>
+                </div>
+                <h6 class="mt-3">KPI Card Pattern</h6>
+                <div class="row">
+                    <div class="col-md-4 mb-2">
+                        <div class="card text-center p-3">
+                            <h6 class="text-muted">Total Deliveries</h6>
+                            <h3 style="color: var(--primary);">1,234</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <div class="card text-center p-3">
+                            <h6 class="text-muted">On-Time Rate</h6>
+                            <h3 style="color: var(--primary);">92.3%</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <div class="card text-center p-3">
+                            <h6 class="text-muted">Truck Utilization</h6>
+                            <h3 style="color: var(--accent);">78.5%</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="code-block"><pre>
+&lt;!-- Section title --&gt;
+&lt;h2 class="section-title"&gt;Performance Metrics&lt;/h2&gt;
+
+&lt;!-- KPI cards --&gt;
+&lt;div class="card text-center p-3"&gt;
+    &lt;h6 class="text-muted"&gt;Total Deliveries&lt;/h6&gt;
+    &lt;h3 style="color: var(--primary);"&gt;1,234&lt;/h3&gt;
+&lt;/div&gt;</pre>
+            </div>
+        </div>
+
+        <!-- ===================== PAGE HEADERS ===================== -->
+        <div class="guide-section" id="page-headers">
+            <h2 class="section-title">Page Headers</h2>
+            <div class="component-demo">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1><i class="bi bi-truck"></i> Vehicles</h1>
+                    <button class="btn btn-primary" data-bs-toggle="modal">
+                        <i class="bi bi-plus-circle"></i> Add Vehicle
+                    </button>
+                </div>
+            </div>
+            <div class="code-block"><pre>
+&lt;div class="d-flex justify-content-between align-items-center mb-4"&gt;
+    &lt;h1&gt;
+        &lt;i class="bi bi-truck"&gt;&lt;/i&gt; Page Title
+    &lt;/h1&gt;
+    &lt;button class="btn btn-primary"&gt;
+        &lt;i class="bi bi-plus-circle"&gt;&lt;/i&gt; Action Button
+    &lt;/button&gt;
+&lt;/div&gt;</pre>
+            </div>
+        </div>
+
+        <!-- ===================== SEARCH PATTERN ===================== -->
+        <div class="guide-section" id="search">
+            <h2 class="section-title">Search Pattern</h2>
+            <div class="component-demo" style="max-width: 500px;">
+                <form class="mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Search by name, plate, branch...">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-search"></i> Search
+                        </button>
+                        <a href="#" class="btn btn-outline-secondary">Clear</a>
+                    </div>
+                </form>
+            </div>
+            <div class="code-block"><pre>
+&lt;div class="input-group"&gt;
+    &lt;input type="text" class="form-control" placeholder="Search..."&gt;
+    &lt;button class="btn btn-primary"&gt;
+        &lt;i class="bi bi-search"&gt;&lt;/i&gt; Search
+    &lt;/button&gt;
+    &lt;a href="#" class="btn btn-outline-secondary"&gt;Clear&lt;/a&gt;
+&lt;/div&gt;</pre>
+            </div>
+        </div>
+
+    </div><!-- /guide-main -->
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Smooth scroll for sidebar links
+        document.querySelectorAll('.guide-sidebar .nav-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                // Update active state
+                document.querySelectorAll('.guide-sidebar .nav-link').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Update active nav on scroll
+        const sections = document.querySelectorAll('.guide-section');
+        const navLinks = document.querySelectorAll('.guide-sidebar .nav-link');
+
+        window.addEventListener('scroll', function() {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop - 100;
+                if (window.scrollY >= sectionTop) {
+                    current = section.getAttribute('id');
+                }
+            });
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

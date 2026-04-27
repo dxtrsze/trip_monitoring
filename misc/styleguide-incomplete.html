@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trip Monitoring System - Component Style Guide</title>
+  <style>
+    /* ============================================================
+       DESIGN SYSTEM - simplified from design.html
+       4-color palette:
+       - Primary: #4ECDC4 (Teal) - main actions, links
+       - Secondary: #1A535C (Deep Sea) - headings, text
+       - Accent: #FF6B6B (Coral) - highlights, CTAs
+       - Background: #F7FFF7 (Bubble White) - light backgrounds
+    ============================================================ */
+    :root {
+      --primary: #4ECDC4;
+      --primary-dark: #2E8B82;
+      --secondary: #1A535C;
+      --accent: #FF6B6B;
+      --accent-light: #FF8E8E;
+      --background: #F7FFF7;
+      --white: #FFFFFF;
+      --gray-light: #E8ECEE;
+      --gray-medium: #6B7B7F;
+    }
+
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+    * { box-sizing: border-box; }
+
+    body {
+      background-color: var(--background);
+      font-family: 'Outfit', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--secondary);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    /* ========== COMPONENT reset ===========
+    .component-section {
+      margin-bottom: 3rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid var(--primary);
+    }
+    .component-section h2 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--secondary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .component-section h2::after {
+      margin-left: auto;
+    }
+    .sample-block {
+      border: 2px solid var(--gray-light);
+      border-radius: 12px;
+      padding: 1.5rem;
+      background-color: #F7FFF7;
+      margin-bottom: 1rem;
+    }
+
+    /* ========== COLOR palette =========== */
+    .swatch-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .swatch {
+      width: 90px;
+      height: 60px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-align: center;
+      line-height: 1;
+    }
+    /* ========== typography =========== */
+    h1, font-size: 2rem; font-weight: 700; color: var(--secondary); margin-bottom: 1.5rem; }
+    h2 { font-size: 1.75rem; font-weight: 700; color: var(--secondary); margin-bottom: 1.25rem; }
+    h3 { font-size: 1.5rem; font-weight: 700; color: var(--secondary); margin-bottom: 1rem; }
+    h4 { font-size: 1.25rem; font-weight: 700; color: var(--secondary); margin-bottom: 1rem; }
+    h5 { font-size: 1rem; font-weight: 600; color: var(--secondary); margin-bottom: 1rem; }
+    h6 { font-size: .95rem; font-weight: 700; color: var(--secondary); margin-bottom: 1rem; }
+    p { margin-bottom: 0.5rem; line-height: 1.6; color: var(--secondary); }
+
+    /* ============================================================
+       NAVbar
+       ============================================================ */
+    .sg-navbar {
+      background-color: var(--secondary) !important;
+      box-shadow: 0 2px 10px rgba(26, 83, 92, 0.15);
+      padding: 0;
+    }
+    .sg-navbar .sg-navbar-brand {
+      font-weight: 700;
+      font-size: 1.4rem;
+      color: var(--white) !important;
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+    }
+    .sg-navbar .sg-navbar-brand:hover {
+      color: var(--primary) !important;
+    }
+    .sg-navbar .sg-nav-link {
+      color: rgba(255, 255, 255, 0.9) !important;
+      font-weight: 500;
+      transition: color 0.2s ease;
+      padding: 0.5rem 1rem;
+    }
+    .sg-navbar .sg-nav-link:hover {
+      color: var(--primary) !important;
+    }
+    .sg-navbar .sg-nav-item { position: relative;
+    }
+    .sg-navbar .sg-dropdown-menu {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      padding: 8px;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      min-width: 180px;
+      z-index: 1000;
+    }
+    .sg-navbar .sg-dropdown-item {
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-weight: 500;
+      transition: background-color 0.2s ease;
+      color: var(--secondary);
+      display: block;
+      background: none;
+      border: none;
+      width: 100%;
+    }
+    .sg-navbar .sg-dropdown-item:hover {
+      background-color: var(--gray-light);
+      color: var(--secondary);
+    }
+
+    <!-- live example: navbar -->
+    <nav class="sg-navbar">
+      <div style="max-width: 900px; margin: 0 auto; display: flex; align-items: center;">
+        <a class="sg-navbar-brand" href="#">Trip Monitoring</a>
+        <button style="background:none; border:none; font-size: 1.25rem; padding: 0.5rem 1rem;" aria-label="Toggle navigation">
+ menu</button>
+        <div style="display: flex; gap: 0;">
+          <div>
+            <ul style="list-style: none; margin: 0; padding: 0; display: flex; gap: 0.5rem;">
+              <li><a class="sg-nav-link" href="#">Dashboard</a></li>
+              <li class="sg-nav-item">
+                <a class="sg-nav-link" href="#" id="dataDropdown" style="padding-right: 0.5rem 1rem; background: none; border: none;">Data Mgmt</a>
+                <div class="sg-dropdown-menu" style="position: static; display: block; left: auto; top: 100%;">
+                  <li><a class="sg-dropdown-item" href="#">View Data</a></li>
+                  <li><a class="sg-dropdown-item" href="#">Upload CSV</a></li>
+                </ul>
+              </li>
+              <li><a class="sg-nav-link" href="#">Time Log</a></li>
+              <li><a class="sg-nav-link" href="#">Reports</a></li>
+            </ul>
+            <div style="margin-left: auto;">
+              <a class="sg-nav-link" href="#" style="font-weight: 600;">
+"><i class="bi bi-person-circle"></i> Admin User (Admin)</a>
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ============================================================
+       cards
+       ============================================================ */
+    .sg-card {
+      border: none;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(26, 83, 92, 0.08);
+      margin-bottom: 1.5rem;
+      background-color: var(--white);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .sg-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(26, 83, 92, 0.12);
+    }
+    .sg-card .sg-card-header {
+      background-color: var(--gray-light);
+      border-bottom: 2px solid var(--primary);
+      border-radius: 16px 16px 0 0 !important;
+      padding: 1rem 1.5rem;
+      font-weight: 600;
+      color: var(--secondary);
+    }
+    .sg-card .sg-card-body {
+      padding: 1.5rem;
+    }
+    /* live example: cards */
+    <div class="sg-card" style="max-width: 350px;">
+      <div class="sg-card-header">
+        <h5 style="margin: 0; font-size: 1rem;">Card with Header</h5>
+      </div>
+      <div class="sg-card-body">
+        <p>This is a card-body"> Basic card content with <a href="#" style="color: var(--primary);">a link</a> and <a href="#" class="sg-btn sg-btn-sm sg-btn-outline-secondary">button</a>.</p>
+      </div>
+    </div>
+
+    <div class="sg-card" style="max-width: 350px;">
+      <div class="sg-card-body" style="padding: 1.25rem;">
+        <h5 style="font-size: .9rem; font-weight: 600; margin-bottom: 0.5rem;">Plain Card (No Header)</h5>
+        <p>Content directly inside card body without a card-header.</p>
+      </div>
+    </div>
+
+    <div class="sg-card" style="max-width: 350px">
+      <div class="sg-card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0" style="margin: 0;">Card with Actions</h5>
+        <div>
+          <button class="sg-btn sg-btn-sm sg-btn-outline-secondary">Export CSV</button>
+        </div>
+      </div>
+      <div class="sg-card-body">
+        <p>Card header with flex layout using d-flex utilities.</p>
+      </div>
+    </div>
+
+    <!-- ============================================================
+       dashboard header
+       ============================================================ */
+    .sg-dashboard-header {
+      background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+      color: #fff;
+      padding: 1.25rem 1.5rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .sg-dashboard-header small {
+      color: #94a3b8;
+    }
+
+    <div class="sg-dashboard-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h4 style="margin: 0; font-size: 1.1rem;">Dashboard</h4>
+        <small style="color: #94a3b8">Loading...</small>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <div style="cursor: pointer; user-select: none;">
+          <label style="font-size: 0.8rem; color: #94a3b8; cursor: pointer;">
+            <input type="checkbox" style="cursor: pointer;">
+            Auto-refresh
+          </label>
+        </div>
+        <button class="sg-btn sg-btn-light sg-btn-sm">Refresh</button>
+      </div>
+    </div>
+
+    <!-- ============================================================
+       section card (dashboard)
+       ============================================================ */
+    .sg-section-card {
+      border: none;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      margin-bottom: 1.5rem;
+    }
+    .sg-section-card .sg-card-header {
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 0.75rem 1rem;
+    }
+    .sg-section-card .sg-card-header h5 {
+      margin: 0;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #334155;
+    }
+    .sg-section-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #1e293b;
+      border-left: 4px solid #3b82f6;
+      padding-left: 0.75rem;
+    }
+
+    <!-- live example -->
+    <div class="sg-section-card">
+      <div class="sg-card-header">
+        <h5><i class="bi bi-graph-up"></i> Daily Delivery Counts</h5>
+      </div>
+      <div class="sg-card-body">
+        <div style="height: 200px; background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%); border-radius: 8px;"></div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+       buttons
+       ============================================================ */
+    .sg-btn {
+      border-radius: 12px;
+      font-weight: 600;
+      padding: 0.625rem 1.5rem;
+      transition: all 0.2s ease;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: inline-block;
+      text-align: center;
+      text-decoration: none;
+      color: var(--white);
+    }
+    .sg-btn:hover {
+      transform: translateY(-2px);
+    }
+    .sg-btn-primary {
+      background-color: var(--primary);
+      color: var(--white);
+    }
+    .sg-btn-primary:hover {
+      background-color: var(--primary-dark);
+      box-shadow: 0 4px 15px rgba(78, 205, 196, 0.4);
+    }
+    .sg-btn-success {
+      background-color: var(--primary);
+      color: var(--white);
+    }
+    .sg-btn-success:hover {
+      background-color: var(--primary-dark);
+      box-shadow: 0 4px 15px rgba(78, 205, 196, 0.4);
+    }
+    .sg-btn-danger {
+      background-color: var(--accent);
+      color: var(--white);
+    }
+    .sg-btn-danger:hover {
+      background-color: var(--accent-light);
+      box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+    }
+    .sg-btn-secondary {
+      background-color: var(--gray-light);
+      color: var(--secondary);
+    }
+    .sg-btn-secondary:hover {
+      background-color: #D8DCDF;
+    }
+    .sg-btn-info {
+      background-color: var(--primary);
+      color: var(--white);
+    }
+    .sg-btn-info:hover {
+      background-color: var(--primary-dark);
+    }
+    .sg-btn-warning {
+      background-color: #FFE66D;
+      color: var(--secondary);
+    }
+    .sg-btn-outline-primary {
+      background-color: transparent;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+    }
+    .sg-btn-outline-primary:hover {
+      background-color: var(--primary);
+      color: var(--white);
+    }
+    .sg-btn-outline-secondary {
+      background-color: transparent;
+      color: var(--secondary);
+      border: 2px solid var(--gray-light);
+    }
+    .sg-btn-outline-secondary:hover {
+      background-color: var(--gray-light);
+    }
+    .sg-btn-outline-danger {
+      background-color: transparent;
+      color: var(--accent);
+      border: 2px solid var(--accent);
+    }
+    .sg-btn-outline-danger:hover {
+      background-color: var(--accent);
+      color: var(--white);
+    }
+    .sg-btn-outline-success {
+      background-color: transparent;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+    }
+    .sg-btn-outline-success:hover {
+      background-color: var(--primary);
+      color: var(--white);
+    }
+    .sg-btn-outline-warning {
+      background-color: transparent;
+      color: #8a7a00;
+      border: 2px solid #FFE66D;
+    }
+    .sg-btn-outline-warning:hover {
+      background-color: #FFE66D;
+      color: var(--secondary);
+    }
+    .sg-btn-sm {
+      padding: 0.375rem 0.875rem;
+      font-size: 0.875rem;
+      border-radius: 10px;
+    }
+    .sg-btn-lg {
+      padding: 0.8rem 1.6rem;
+      font-size: 1.25rem;
+    }
+    .sg-btn-w-100 {
+      width: 100%;
+    }
+
+    /* live examples */
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Solid Fill Buttons</h4>
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+      <button class="sg-btn sg-btn-primary">Primary</button>
+      <button class="sg-btn sg-btn-success">Success</button>
+      <button class="sg-btn sg-btn-danger">Danger</button>
+      <button class="sg-btn sg-btn-secondary">Secondary</button>
+      <button class="sg-btn sg-btn-info">Info</button>
+      <button class="sg-btn sg-btn-warning">Warning</button>
+    </div>
+
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Outline Buttons</h4>
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+      <button class="sg-btn sg-btn-outline-primary">Outline Primary</button>
+      <button class="sg-btn sg-btn-outline-secondary">Outline Secondary</button>
+      <button class="sg-btn sg-btn-outline-danger">Outline Danger</button>
+      <button class="sg-btn sg-btn-outline-success">Outline Success</button>
+      <button class="sg-btn sg-btn-outline-warning">Outline Warning</button>
+    </div>
+
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Button Sizes</h4>
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1rem;">
+      <button class="sg-btn sg-btn-primary sg-btn-sm">Small</button>
+      <button class="sg-btn sg-btn-primary">Default</button>
+      <button class="sg-btn sg-btn-primary sg-btn-lg">Large</button>
+    </div>
+
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Block Buttons (Width)</ 100%)</h4>
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+      <button class="sg-btn sg-btn-primary sg-btn-w-100">Full Width Button</button>
+    </div>
+
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Button Groups</h4>
+    <div class="sg-btn-group sg-btn-group-sm" role="group">
+      <button class="sg-btn sg-btn-outline-success">In</button>
+      <button class="sg-btn sg-btn-warning">Out</button>
+      <button class="sg-btn sg-btn-outline-danger">Cancel</button>
+    </div>
+
+    <!-- ============================================================
+       forms
+       ============================================================ */
+    .sg-form-control, .sg-form-select {
+      border: 2px solid var(--gray-light);
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+      width: 100%;
+      color: var(--secondary);
+      font-family: inherit;
+    }
+    .sg-form-control:focus, .sg-form-select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.15);
+      outline: none;
+    }
+    .sg-form-label {
+      font-weight: 600;
+      color: var(--secondary);
+      margin-bottom: 0.5rem;
+      display: inline-block;
+    }
+    .sg-form-text {
+      font-size: 0.875rem;
+      color: var(--gray-medium);
+      margin-top: 0.25rem;
+    }
+    .sg-form-select {
+      appearance: none;
+      cursor: pointer;
+    }
+
+    .sg-is-invalid {
+      border-color: var(--accent) !important;
+    }
+    .sg-invalid-feedback {
+      color: var(--accent);
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+    .sg-is-valid {
+      border-color: var(--primary) !important;
+    }
+    .sg-valid-feedback {
+      color: var(--primary);
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+    .sg-form-check-input {
+      border: 2px solid var(--gray-medium);
+      border-radius: 6px;
+      width: 1em;
+      height: 1em;
+      cursor: pointer;
+    }
+    .sg-form-check-input:checked {
+      background-color: var(--primary);
+      border-color: var(--primary);
+    }
+    .sg-form-check-label {
+      cursor: pointer;
+      margin-left: 0.25rem;
+    }
+
+    /* live examples */
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Text Inputs</h4>
+    <div style="margin-bottom: 1.5rem;">
+      <label class="sg-form-label">Email Address</label>
+      <input type="email" class="sg-form-control" placeholder="name@example.com">
+ value="">
+    </div>
+    <div style="margin-bottom: 1.5rem;">
+      <label class="sg-form-label" for="readonly-demo">Read Only Field</label>
+      <input type="text" class="sg-form-control" id="readonly-demo" value="DOC-2024-00123 readonly>
+ style="background-color: var(--gray-light);">
+    </div>
+    <div style="margin-bottom: 1.5rem;">
+      <label class="sg-form-label">Disabled Input</label>
+      <input type="text" class="sg-form-control" disabled placeholder="Cannot edit">
+ value="">
+    </div>
+    <div style="margin-bottom: 1.5rem;">
+      <label class="sg-form-label">Valid Input</label>
+      <input type="text" class="sg-form-control sg-is-valid" value="Valid value">
+      <div class="sg-valid-feedback">Looks good!</div>
+    </div>
+    <div style="margin-bottom: 1.5rem;">
+      <label class="sg-form-label">Invalid Input</label>
+      <input type="text" class="sg-form-control sg-is-invalid" value="" required>
+      <div class="sg-invalid-feedback">This field is required.</div>
+    </div>
+
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Date & Time Inputs</h4>
+    <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 150px;">
+        <label class="sg-form-label">Date</label>
+        <input type="date" class="sg-form-control" value="2026-04-07">
+      </div>
+      <div style="flex: 1; min-width: 150px;">
+        <label class="sg-form-label">Time</label>
+        <input type="time" class="sg-form-control" value="08:00">
+      </div>
+      <div style="flex: 1; min-width: 200px;">
+        <label class="sg-form-label">Datetime</label>
+        <input type="datetime-local" class="sg-form-control" value="2026-04-07T08:00">
+      </div>
+    </div>
+
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Number Inputs</h4>
+    <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 150px;">
+        <label class="sg-form-label">Ordered Qty</label>
+        <input type="number" class="sg-form-control" placeholder="0" min="0">
+      </div>
+      <div style="flex: 1; min-width: 150px;">
+        <label class="sg-form-label">CBM</label>
+        <input type="number" class="sg-form-control" placeholder="0.00" step="0.01">
+      </div>
+      <div style="flex: 1; min-width: 150px;">
+        <label class="sg-form-label">Daily Rate</label>
+        <input type="number" class="sg-form-control" placeholder="0.00" step="0.01" min="0">
+      </div>
+    </div>
+
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Password & File</h4>
+    <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 200px;">
+        <label class="sg-form-label">Password</label>
+        <input type="password" class="sg-form-control" value="secret123" placeholder="Min 6 chars">
+        <div class="sg-form-text">Minimum 6 characters</div>
+      </div>
+      <div style="flex: 1; min-width: 200px;">
+        <label class="sg-form-label">Upload CSV</label>
+        <input type="file" class="sg-form-control" accept=".csv">
+        <div class="sg-form-text">Upload a CSV file containing delivery records.</div>
+      </div>
+    </div>
+
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Select / Dropdown</h4>
+    <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 200px;">
+        <label class="sg-form-label">Document Status</label>
+        <select class="sg-form-select">
+          <option value="">Select status</option>
+          <option value="O">Open</option>
+          <option value="C">Closed</option>
+        </select>
+      </div>
+      <div style="flex: 1; min-width: 200px;">
+        <label class="sg-form-label">Position</label>
+        <select class="sg-form-select">
+          <option value="">Select position</option>
+          <option value="admin">Admin</option>
+          <option value="user">User</option>
+          <option value="executive">Executive</option>
+          <option value="teamlead">TeamLead</option>
+        </select>
+      </div>
+      <div style="flex: 1; min-width: 200px;">
+        <label class="sg-form-label">Department</label>
+        <select class="sg-form-select">
+          <option value="">All Departments</option>
+          <option value="Logistics">Logistics</option>
+          <option value="Executive">Executive</option>
+          <option value="Service">Service</option>
+        </select>
+      </div>
+    </div>
+
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Textarea</h4>
+    <div style="margin-bottom: 1.5rem;">
+      <label class="sg-form-label">Remarks</label>
+      <textarea class="sg-form-control" rows="3" placeholder="Enter remarks..."></textarea>
+    </div>
+    <div style="margin-bottom: 1.5rem;">
+      <label class="sg-form-label">Special Instructions</label>
+      <textarea class="sg-form-control" rows="2" placeholder="Enter special instructions..."></textarea>
+    </div>
+
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Input Group</h4>
+    <div style="margin-bottom: 1.5rem;">
+      <div class="sg-input-group">
+        <input type="text" class="sg-form-control" placeholder="Search by Document Number...">
+        <button class="sg-btn sg-btn-primary">Search</button>
+        <button class="sg-btn sg-btn-outline-secondary">Clear</button>
+      </div>
+    </div>
+    <div style="margin-bottom: 1.5rem;">
+      <label class="sg-form-label">Odometer Reading</label>
+      <div class="sg-input-group sg-input-group-sm">
+        <input type="number" class="sg-form-control" placeholder="0" step="0.1">
+        <button class="sg-btn sg-btn-outline-success">Submit</button>
+      </div>
+    </div>
+
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Checkboxes</h4>
+    <div style="margin-bottom: 1.5rem;">
+      <div class="sg-form-check">
+        <input class="sg-form-check-input" type="checkbox" id="check1">
+        <label class="sg-form-check-label" for="check1">Option one (default checked)</label>
+      </div>
+      <div class="sg-form-check" style="margin-left: 1.5rem;">
+        <input class="sg-form-check-input" type="checkbox" id="check2" checked>
+        <label class="sg-form-check-label" for="check2">Option two (checked)</label>
+      </div>
+      <div class="sg-form-check">
+        <input class="sg-form-check-input" type="checkbox" id="check3">
+        <label class="sg-form-check-label" for="check3">Option three</label>
+      </div>
+      <div class="sg-form-check" style="margin-left: 1.5rem;">
+        <input class="sg-form-check-input" type="checkbox" id="check4" disabled>
+        <label class="sg-form-check-label" for="check4">Option four (disabled)</label>
+      </div>
+    </div>
+
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Switch / Toggle</h4>
+    <div style="margin-bottom: 1.5rem;">
+      <div class="sg-form-check sg-form-switch" style="margin-bottom: 0;">
+        <input class="sg-form-check-input" type="checkbox" role="switch" id="switchDemo">
+ style="cursor: pointer;">
+        <label class="sg-form-check-label" for="switchDemo" style="font-size: 0.8rem; color: var(--gray-medium);">Auto-refresh</label>
+      </div>
+    </div>
+
+    <!-- ============================================================
+       tables
+       ============================================================ */
+    .sg-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .sg-table thead th {
+      background-color: var(--gray-light);
+      color: var(--secondary);
+      font-weight: 600;
+      border-bottom: 2px solid var(--primary);
+      padding: 1rem;
+      vertical-align: middle;
+      text-align: left;
+    }
+    .sg-table tbody td {
+      padding: 1rem;
+      vertical-align: middle;
+      border-bottom: 1px solid var(--gray-light);
+      color: var(--secondary);
+      text-align: left;
+    }
+    .sg-table tbody tr {
+      transition: background-color 0.2s ease;
+    }
+    .sg-table tbody tr:hover {
+      background-color: rgba(78, 205, 196, 0.05);
+    }
+    .sg-table-striped tbody tr:nth-child(even) {
+      background-color: rgba(78, 205, 196, 0.03);
+    }
+    .sg-table-sm th, .sg-table tbody td {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+    }
+    .sg-table-compact {
+      font-size: 0.85rem;
+    }
+    .sg-table-compact thead th {
+      white-space: nowrap;
+    }
+    .sg-table-responsive {
+      border-radius: 12px;
+      overflow-x: auto;
+    }
+
+    /* live example: standard table */
+    <div class="sg-card" style="margin-bottom: 0;">
+      <div class="sg-card-body" style="padding: 0">
+        <div class="sg-table-responsive">
+            <table class="sg-table sg-table-striped sg-table-hover">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Posting Date</th>
+                  <th>Document Number</th>
+                  <th>Branch</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>2026-04-07</td>
+                  <td>DOC-2024-00123</td>
+                  <td>Main Warehouse</td>
+                  <td><span class="sg-badge sg-bg-success">Closed</span></td>
+                  <td>
+                    <button class="sg-btn sg-btn-sm sg-btn-outline-primary">Edit</button>
+                    <button class="sg-btn sg-btn-sm sg-btn-outline-danger">Delete</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>2026-04-07</td>
+                  <td>DOC-2024-002</</td>
+                  <td>Branch Alpha</td>
+                  <td><span class="sg-badge sg-bg-warning">Open</span></td>
+                  <td>
+                    <button class="sg-btn sg-btn-sm sg-btn-outline-primary">Edit</button>
+                    <button class="sg-btn sg-btn-sm sg-btn-outline-danger">Delete</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>2026-04-06</td>
+                  <td>DOC-2024-003</</td>
+                  <td>Branch Beta</td>
+                  <td><span class="sg-badge sg-bg-danger">Cancelled</span></td>
+                  <td>
+                    <button class="sg-btn sg-btn-sm sg-btn-outline-primary">Edit</button>
+                    <button class="sg-btn sg-btn-sm sg-btn-outline-danger">Delete</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- live example: compact table -->
+    <div class="sg-card" style="margin-bottom: 0;">
+      <div class="sg-card-body" style="padding: 0">
+        <div class="sg-table-responsive">
+          <table class="sg-table sg-table-striped sg-table-hover sg-table-sm sg-table-compact">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Branch</th>
+                <th>CBM</th>
+                <th>Status</th>
+                <th>Arrive</th>
+                <th>Departure</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="sg-badge sg-bg-primary">1st</span></td>
+                <td>Branch Alpha</td>
+                <td>3.50</td>
+                <td><span class="sg-badge sg-bg-secondary">Delivered</span></td>
+                <td><span style="color: #4ECDC4;">2026-04-07 08:30</span></td>
+                <td><span style="color: #1A535C;">2026-04-07 9:15</span></td>
+              </tr>
+              <tr>
+                <td><span class="sg-badge sg-bg-primary">2nd</span></td>
+                <td>Branch Beta</td>
+                <td>2.8</td>
+                <td><span class="sg-badge sg-bg-secondary">In Transit</span></td>
+                <td><span style="color: var(--gray-medium);">—</span></td>
+                <td><span style="color: var(--gray-medium);">—</span></td>
+              </tr>
+              <tr>
+                <td><span class="sg-badge sg-bg-primary">3rd</span></td>
+                <td>Branch Gamma</td>
+                <td>4.2</td>
+                <td><span class="sg-badge sg-bg-secondary">Cancelled</span></td>
+                <td><span style="color: var(--gray-medium);">—</span></td>
+                <td><span style="color: var(--gray-medium);">—</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+       badges
+       ============================================================ */
+    .sg-badge {
+      font-weight: 600;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      display: inline-block;
+      font-size: 0.85rem;
+      text-align: center;
+      white-space: nowrap;
+      line-height: 1.5;
+    }
+    .sg-bg-success {
+      background-color: var(--primary) !important;
+      color: var(--white) !important;
+    }
+    .sg-bg-primary {
+      background-color: var(--secondary) !important;
+      color: var(--white) !important;
+    }
+    .sg-bg-danger {
+      background-color: var(--accent) !important;
+      color: var(--white) !important;
+    }
+    .sg-bg-warning {
+      background-color: #FFE66D !important;
+      color: var(--secondary) !important;
+    }
+    .sg-bg-info {
+      background-color: var(--primary) !important;
+      color: var(--white) !important;
+    }
+    .sg-bg-secondary {
+      background-color: var(--gray-medium) !important;
+      color: var(--white) !important;
+    }
+    .sg-badge-lg {
+      font-size: 1rem;
+      padding: 0.625rem 1rem;
+    }
+
+    /* live examples */
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Status Badges</h4>
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+      <span class="sg-badge sg-bg-success">Delivered</span>
+      <span class="sg-badge sg-bg-primary">Admin</span>
+      <span class="sg-badge sg-bg-danger">Cancelled</span>
+      <span class="sg-badge sg-bg-warning">Open</span>
+      <span class="sg-badge sg-bg-info">Trip 1</span>
+      <span class="sg-badge sg-bg-secondary">In Transit</span>
+    </div>
+
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">LCL Status Badges</h4>
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+      <span class="sg-badge sg-bg-success">DELIVERED</span>
+      <span class="sg-badge sg-bg-primary">IN TRANSIT</span>
+      <span class="sg-badge sg-bg-warning">PENDING</span>
+      <span class="sg-badge sg-bg-danger">CANCELLED</span>
+    </div>
+
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Utilization Badges</h4>
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+      <span class="sg-badge sg-bg-success">Utilization: 92.3%</span>
+      <span class="sg-badge sg-bg-warning">Utilization: 67.5%</span>
+      <span class="sg-badge sg-bg-danger">Utilization: 32.1%</span>
+    </div>
+
+    <h4 style="color: var(--secondary); font-weight: 700; margin-bottom: 1rem;">Badge Sizes</h4>
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1rem;">
+      <span class="sg-badge sg-bg-info sg-badge-lg">Large Badge</span>
+      <span class="sg-badge sg-bg-primary">Default Badge</span>
+      <span class="sg-badge sg-bg-secondary" style="font-size: 0.7rem;">Small Badge</span>
+    </div>
+
+    <!-- ============================================================
+       alerts
+       ============================================================ */
+    .sg-alert {
+      border: none;
+      border-radius: 12px;
+      border-left: 4px solid;
+      padding: 1rem 1.5rem;
+      margin-bottom: 1rem;
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .sg-alert-info {
+      background-color: rgba(78, 205, 196, 0.1);
+      border-left-color: var(--primary);
+      color: var(--secondary);
+    }
+    .sg-alert-success {
+      background-color: rgba(78, 205, 196, 0.1);
+      border-left-color: var(--primary);
+      color: var(--secondary);
+    }
+    .sg-alert-danger {
+      background-color: rgba(255, 107, 107, 0.1);
+      border-left-color: var(--accent);
+      color: var(--secondary);
+    }
+    .sg-alert-warning {
+      background-color: rgba(255, 230, 109, 0.2);
+      border-left-color: #FFE66D;
+      color: var(--secondary);
+    }
+    .sg-alert-dismissible .sg-close-btn {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: var(--secondary);
+      opacity: 0.5;
+      padding: 0;
+      margin-left: auto;
+    }
+    .sg-alert-dismissible .sg-close-btn:hover {
+      opacity: 1;
+    }
+
+    /* live examples */
+    <div class="sg-alert sg-alert-info sg-alert-dismissible">
+      <span>This is a flash message shown after an action (e.g., "Record deleted successfully").</span>
+      <button class="sg-close-btn" onclick="this.parentElement.style.display='none'">&times;</button>
+    </div>
+
+    <div class="sg-alert sg-alert-success sg-alert-dismissible">
+      <span>Operation completed successfully. Data has been saved.</span>
+      <button class="sg-close-btn" onclick="this.parentElement.style.display='none'">&times;</button>
+    </div>
+
+    <div class="sg-alert sg-alert-danger sg-alert-dismissible">
+      <span>Error: Could not connect to the database. Please try again later.</span>
+      <button class="sg-close-btn" onclick="this.parentElement.style.display='none'">&times;</button>
+    </div>
+
+    <div class="sg-alert sg-alert-warning sg-alert-dismissible">
+      <span>Warning: This vehicle is already scheduled for this date. Proceed anyway?</span>
+      <button class="sg-close-btn" onclick="this.parentElement.style.display='none'">&times;</button>
+    </div>
+
+    <!-- ============================================================
+       modals
+       ============================================================ */
+    .sg-modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1040;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sg-modal-backdrop.hidden { display: none; }
+    .sg-modal {
+      border: none;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(26, 83, 92, 0.15);
+      background-color: var(--white);
+      width: 500px;
+      max-width: 90vw;
+      overflow: hidden;
+    }
+    .sg-modal-header {
+      border-bottom: 2px solid var(--gray-light);
+      background-color: var(--gray-light);
+      border-radius: 16px 16px 0 0;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sg-modal-title {
+      font-weight: 700;
+      color: var(--secondary);
+      margin: 0;
+      font-size: 1.1rem;
+    }
+    .sg-modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--secondary);
+      opacity: 0.5;
+      padding: 0;
+    }
+    .sg-modal-close:hover { opacity: 1; }
+    .sg-modal-body {
+      padding: 1.5rem;
+      color: var(--secondary);
+    }
+    .sg-modal-footer {
+      border-top: 2px solid var(--gray-light);
+      background-color: var(--gray-light);
+      border-radius: 0 0 16px 16px;
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+
+    /* live example: modal */
+    <div style="margin-bottom: 1rem;">
+      <button class="sg-btn sg-btn-primary" onclick="document.getElementById('demoModal').classList.remove('hidden')">Open Modal Demo</button>
+      <button class="sg-btn sg-btn-danger" onclick="document.getElementById('demoDeleteModal').classList.remove('hidden')">Open Delete Confirmation</button>
+    </div>
+
+    <!-- Modal: Add User -->
+    <div class="sg-modal-backdrop hidden" id="demoModal">
+      <div class="sg-modal">
+        <div class="sg-modal-header">
+          <h5 class="sg-modal-title">Add New User</h5>
+          <button class="sg-modal-close" onclick="document.getElementById('demoModal').classList.add('hidden')">&times;</button>
+        </div>
+        <div class="sg-modal-body">
+          <div style="margin-bottom: 1rem;">
+            <label class="sg-form-label">Name</label>
+            <input type="text" class="sg-form-control" placeholder="Enter name" required>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <label class="sg-form-label">Email</label>
+            <input type="email" class="sg-form-control" placeholder="name@example.com" required>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <label class="sg-form-label">Position</label>
+            <select class="sg-form-select" required>
+              <option value="">Select position</option>
+              <option value="admin">Admin</option>
+              <option value="user">User</option>
+              <option value="executive">Executive</option>
+              <option value="teamlead">TeamLead</option>
+            </select>
+          </div>
+        </div>
+        <div class="sg-modal-footer">
+          <button class="sg-btn sg-btn-secondary" onclick="document.getElementById('demoModal').classList.add('hidden')">Cancel</button>
+          <button class="sg-btn sg-btn-primary">Add User</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Delete Confirmation -->
+    <div class="sg-modal-backdrop hidden" id="demoDeleteModal">
+      <div class="sg-modal">
+        <div class="sg-modal-header" style="background-color: rgba(255, 107, 107, 0.1);">
+          <h5 class="sg-modal-title" style="color: var(--accent);">Delete Data Record</h5>
+          <button class="sg-modal-close" onclick="document.getElementById('demoDeleteModal').classList.add('hidden')">&times;</button>
+        </div>
+        <div class="sg-modal-body">
+          <div style="margin-bottom: 1rem;">
+            <label class="sg-form-label">Document Number</label>
+            <input type="text" class="sg-form-control" value="DOC-2024-001" readonly style="background-color: var(--gray-light);">
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <label class="sg-form-label">Delete Reason</label>
+            <select class="sg-form-select" required>
+              <option value="" selected disabled>Select a reason</option>
+              <option>DUPLICATE ENTRY</option>
+              <option>DATA ENTRY ERROR</option>
+              <option>VEHICLE CONCERN</option>
+              <option>WEATHER CONDITION</option>
+              <option>CUSTOMER REQUEST</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <label class="sg-form-label">Detailed Remarks (Optional)</label>
+            <textarea class="sg-form-control" rows="3" placeholder="Enter detailed explanation for deletion..."></textarea>
+          </div>
+        </div>
+        <div class="sg-modal-footer">
+          <button class="sg-btn sg-btn-secondary" onclick="document.getElementById('demoDeleteModal').classList.add('hidden')">Cancel</button>
+          <button class="sg-btn sg-btn-danger">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+       pagination
+       ============================================================ */
+    .sg-pagination {
+      display: flex;
+      justify-content: center;
+      list-style: none;
+      padding: 0;
+      margin: 1rem 0;
+      gap: 0.25rem;
+    }
+    .sg-pagination li { list-style: none; }
+    .sg-page-link {
+      color: var(--primary);
+      border: 2px solid var(--gray-light);
+      border-radius: 10px;
+      padding: 0.5rem 0.85rem;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      display: block;
+      background: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .sg-page-link:hover {
+      background-color: var(--primary);
+      color: var(--white);
+      border-color: var(--primary);
+    }
+    .sg-page-item.active .sg-page-link {
+      background-color: var(--primary);
+      border-color: var(--primary);
+      color: var(--white);
+      cursor: default;
+    }
+    .sg-page-item.disabled .sg-page-link {
+      color: var(--gray-medium);
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    /* live example */
+    <nav style="margin-bottom: 0.5rem;">
+      <ul class="sg-pagination">
+        <li class="sg-page-item disabled"><span class="sg-page-link">&laquo;</span></li>
+        <li class="sg-page-item"><a class="sg-page-link" href="#">1</a></li>
+        <li class="sg-page-item active"><span class="sg-page-link">2</span></li>
+        <li class="sg-page-item"><a class="sg-page-link" href="#">3</a></li>
+        <li class="sg-page-item"><a class="sg-page-link" href="#">4</a></li>
+        <li class="sg-page-item disabled"><span class="sg-page-link">...</span></li>
+        <li class="sg-page-item"><a class="sg-page-link" href="#">10</a></li>
+        <li class="sg-page-item"><a class="sg-page-link" href="#">&raquo;</a></li>
+      </ul>
+      <div style="text-align: center; color: var(--gray-medium);">
+"><small>Showing 2 of 10 pages (95 total records)</small>
+</div>
+    </nav>
+

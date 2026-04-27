@@ -1,3 +1,0 @@
-- when using "python app.py" command, use "uv run app.py" instead.
-- when using "pip install <package>" command, use "uv add <package>" instead.
-- when creating or adding new columns to the database, update "migrate_taiwan.py" to include the migration script.
