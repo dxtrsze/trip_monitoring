@@ -50,13 +50,13 @@ body {
     color: var(--primary) !important;
 }
 
-.nav-link {
+.navbar .nav-link {
     color: rgba(255, 255, 255, 0.9) !important;
     font-weight: 500;
     transition: color 0.2s ease;
 }
 
-.nav-link:hover {
+.navbar .nav-link:hover {
     color: var(--primary) !important;
 }
 
