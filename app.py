@@ -41,6 +41,7 @@ from models import (
     Data,
     LCLDetail,
     LCLSummary,
+    LocationLog,
     Manpower,
     Odo,
     Schedule,
@@ -3092,13 +3093,17 @@ def cancel_trip_detail():
 
 
 @app.route("/record_arrival", methods=["POST"])
+@login_required
 def record_arrival():
+    """Record arrival time with optional location capture."""
     try:
         data = request.get_json()
         branch_name = data.get("branch_name_v2")
         schedule_id = data.get("schedule_id")
         trip_number = data.get("trip_number")
         reason = data.get("reason", "")
+        latitude = data.get("latitude")
+        longitude = data.get("longitude")
 
         if not branch_name or not schedule_id or not trip_number:
             return jsonify(
@@ -3121,6 +3126,18 @@ def record_arrival():
         # Record arrival time and reason
         trip_detail.arrive = datetime.now()
         trip_detail.reason = reason
+
+        # Store location if provided
+        if latitude is not None and longitude is not None:
+            location_log = LocationLog(
+                trip_detail_id=trip_detail.id,
+                action_type='arrival',
+                latitude=float(latitude),
+                longitude=float(longitude),
+                captured_at=datetime.now(),
+                user_id=current_user.id
+            )
+            db.session.add(location_log)
 
         db.session.commit()
         return jsonify(
