@@ -3283,6 +3283,94 @@ def location_logs():
     )
 
 
+@app.route("/api/vehicle-routes")
+@login_required
+def api_vehicle_routes():
+    """API endpoint returning vehicle route data for map visualization."""
+    date_str = request.args.get('date')
+    vehicle_id = request.args.get('vehicle_id')
+
+    if not date_str:
+        return jsonify({"success": False, "message": "Date parameter required"}), 400
+
+    try:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({"success": False, "message": "Invalid date format"}), 400
+
+    # Build query: location logs for the given date
+    next_day = target_date + timedelta(days=1)
+    query = LocationLog.query.filter(
+        LocationLog.captured_at >= target_date,
+        LocationLog.captured_at < next_day
+    ).outerjoin(TripDetail).order_by(LocationLog.captured_at)
+
+    if vehicle_id:
+        try:
+            query = query.join(Trip).filter(Trip.vehicle_id == int(vehicle_id))
+        except (ValueError, TypeError):
+            return jsonify({"success": False, "message": "Invalid vehicle_id"}), 400
+
+    location_logs = query.all()
+
+    # Group logs by vehicle, pairing In/Out for same trip_detail
+    vehicles_dict = {}
+    for log in location_logs:
+        if log is None or log.trip_detail is None:
+            continue
+
+        trip = Trip.query.get(log.trip_detail.trip_id)
+        if not trip:
+            continue
+
+        v_id = trip.vehicle_id
+        if v_id not in vehicles_dict:
+            vehicles_dict[v_id] = {
+                'vehicle_id': v_id,
+                'plate_number': trip.vehicle.plate_number if trip.vehicle else 'Unknown',
+                'stops': {}
+            }
+
+        td_id = log.trip_detail_id
+        if td_id not in vehicles_dict[v_id]['stops']:
+            vehicles_dict[v_id]['stops'][td_id] = {
+                'trip_detail_id': td_id,
+                'branch': log.trip_detail.branch_name_v2,
+                'delivery_order': log.trip_detail.delivery_order,
+                'in_time': None,
+                'out_time': None,
+                'in_location': None,
+                'out_location': None
+            }
+
+        stop = vehicles_dict[v_id]['stops'][td_id]
+        if log.action_type == 'arrival':
+            stop['in_time'] = log.captured_at.strftime('%Y-%m-%d %H:%M:%S')
+            stop['in_location'] = {'lat': log.latitude, 'lng': log.longitude}
+        elif log.action_type == 'departure':
+            stop['out_time'] = log.captured_at.strftime('%Y-%m-%d %H:%M:%S')
+            stop['out_location'] = {'lat': log.latitude, 'lng': log.longitude}
+
+    # Convert stops dict to sorted list per vehicle
+    vehicles_list = []
+    for v_id, v_data in vehicles_dict.items():
+        sorted_stops = sorted(
+            v_data['stops'].values(),
+            key=lambda s: s.get('delivery_order') or 999
+        )
+        vehicles_list.append({
+            'vehicle_id': v_data['vehicle_id'],
+            'plate_number': v_data['plate_number'],
+            'stops': sorted_stops
+        })
+
+    return jsonify({
+        "success": True,
+        "date": date_str,
+        "vehicles": vehicles_list
+    })
+
+
 # Odometer reading routes
 @app.route("/record_odo", methods=["POST"])
 @login_required
