@@ -87,11 +87,15 @@
               </small>
             </td>
             <td>
+              {% if log.latitude is not none and log.longitude is not none %}
               <a href="https://www.google.com/maps?q={{ log.latitude }},{{ log.longitude }}"
                  target="_blank"
                  class="btn btn-sm btn-outline-primary">
                 <i class="bi bi-map"></i> View
               </a>
+              {% else %}
+              <span class="text-muted">N/A</span>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}
