@@ -168,6 +168,40 @@ class Odo(db.Model):
     def __repr__(self):
         return f'<Odo {self.id} - {self.plate_number} - {self.status}>'
 
+class LocationLog(db.Model):
+    """Store location captures for In/Out actions on trip details."""
+    __tablename__ = 'location_log'
+
+    id = db.Column(db.Integer, primary_key=True)
+    trip_detail_id = db.Column(db.Integer, db.ForeignKey('trip_detail.id'), nullable=False)
+    action_type = db.Column(db.String(20), nullable=False)  # 'arrival' or 'departure'
+    latitude = db.Column(db.Float, nullable=False)
+    longitude = db.Column(db.Float, nullable=False)
+    captured_at = db.Column(db.DateTime, nullable=False)  # When location was captured by browser
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now)
+
+    # Relationships
+    trip_detail = db.relationship('TripDetail', backref=db.backref('location_logs', lazy=True))
+    user = db.relationship('User', backref=db.backref('location_logs', lazy=True))
+
+    def to_dict(self):
+        """Convert to dictionary for JSON serialization."""
+        return {
+            'id': self.id,
+            'trip_detail_id': self.trip_detail_id,
+            'action_type': self.action_type,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
+            'captured_at': self.captured_at.strftime('%Y-%m-%d %H:%M:%S') if self.captured_at else None,
+            'user_id': self.user_id,
+            'user_name': self.user.name if self.user else None,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f'<LocationLog {self.id} - {self.action_type} - {self.latitude}, {self.longitude}>'
+
 class User(UserMixin, db.Model):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
