@@ -670,6 +670,136 @@ function cancelTripDetail(documentNumber, scheduleId, tripNumber) {
 </script> -->
 
 <script>
+// Geolocation helper functions for In/Out actions
+
+/**
+ * Get current browser location with error handling
+ * @returns {Promise<Object>} Object with latitude and longitude
+ * @throws {Error} If geolocation fails or is denied
+ */
+function getLocationWithTimeout() {
+  return new Promise((resolve, reject) => {
+    // Check if geolocation is supported
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocation is not supported by your browser. Please use a modern browser.'));
+      return;
+    }
+
+    // Set up timeout
+    const timeoutId = setTimeout(() => {
+      reject(new Error('Could not get your location in time. Please try again.'));
+    }, 10000); // 10 second timeout
+
+    // Get current position
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        clearTimeout(timeoutId);
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        });
+      },
+      (error) => {
+        clearTimeout(timeoutId);
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            reject(new Error('Location access is required to record In/Out. Please enable location permissions in your browser and refresh the page.'));
+            break;
+          case error.POSITION_UNAVAILABLE:
+            reject(new Error('Unable to get your location. Please check your device settings and try again.'));
+            break;
+          case error.TIMEOUT:
+            reject(new Error('Could not get your location in time. Please try again.'));
+            break;
+          default:
+            reject(new Error('An unknown error occurred getting your location. Please try again.'));
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  });
+}
+
+/**
+ * Record arrival with location capture
+ * @param {string} branchName - Branch name
+ * @param {number} scheduleId - Schedule ID
+ * @param {number} tripNumber - Trip number
+ * @param {string} reason - Optional reason
+ * @returns {Promise<void>}
+ */
+async function recordArrivalWithLocation(branchName, scheduleId, tripNumber, reason) {
+  try {
+    // Get location first
+    const location = await getLocationWithTimeout();
+
+    // Send arrival request with location
+    const response = await fetch('/record_arrival', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        branch_name_v2: branchName,
+        schedule_id: scheduleId,
+        trip_number: tripNumber,
+        reason: reason,
+        latitude: location.latitude,
+        longitude: location.longitude
+      })
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      location.reload();
+    } else {
+      alert('Error recording arrival: ' + data.message);
+    }
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+/**
+ * Record departure with location capture
+ * @param {string} branchName - Branch name
+ * @param {number} scheduleId - Schedule ID
+ * @param {number} tripNumber - Trip number
+ * @param {string} reason - Optional reason
+ * @returns {Promise<void>}
+ */
+async function recordDepartureWithLocation(branchName, scheduleId, tripNumber, reason) {
+  try {
+    // Get location first
+    const location = await getLocationWithTimeout();
+
+    // Send departure request with location
+    const response = await fetch('/record_departure', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        branch_name_v2: branchName,
+        schedule_id: scheduleId,
+        trip_number: tripNumber,
+        reason: reason,
+        latitude: location.latitude,
+        longitude: location.longitude
+      })
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      location.reload();
+    } else {
+      alert('Error recording departure: ' + data.message);
+    }
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
 // Global variables to store trip detail information
 let currentBranchName, currentScheduleId, currentTripNumber;
 let reorderModal;
