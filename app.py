@@ -4835,9 +4835,12 @@ def export_scheduled_trips_report():
                     def get_ordinal(n):
                         if not n:
                             return "—"
-                        s = ["th", "st", "nd", "rd"]
-                        v = n % 100
-                        return f"{n}{(s[(v - 20) % 10] or s[v] or s[0])}"
+                        # Handle 11th, 12th, 13th as special cases
+                        if 11 <= (n % 100) <= 13:
+                            suffix = "th"
+                        else:
+                            suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+                        return f"{n}{suffix}"
 
                     writer.writerow(
                         [

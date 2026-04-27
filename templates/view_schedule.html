@@ -680,9 +680,13 @@ let currentEditTimeTripId;
 // Helper function to get ordinal suffix (1st, 2nd, 3rd, etc.)
 function getOrdinal(n) {
   if (!n) return '—';
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  // Handle 11th, 12th, 13th as special cases
+  if (n % 100 >= 11 && n % 100 <= 13) {
+    return n + 'th';
+  }
+  const lastDigit = n % 10;
+  const suffixes = {1: 'st', 2: 'nd', 3: 'rd'};
+  return n + (suffixes[lastDigit] || 'th');
 }
 
 // Function to open the reorder modal
