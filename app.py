@@ -3161,13 +3161,17 @@ def record_arrival():
 
 
 @app.route("/record_departure", methods=["POST"])
+@login_required
 def record_departure():
+    """Record departure time with optional location capture."""
     try:
         data = request.get_json()
         branch_name = data.get("branch_name_v2")
         schedule_id = data.get("schedule_id")
         trip_number = data.get("trip_number")
         reason = data.get("reason", "")
+        latitude = data.get("latitude")
+        longitude = data.get("longitude")
 
         if not branch_name or not schedule_id or not trip_number:
             return jsonify(
@@ -3191,6 +3195,26 @@ def record_departure():
         trip_detail.departure = datetime.now()
         if reason:
             trip_detail.reason = reason
+
+        # Store location if provided
+        if latitude is not None and longitude is not None:
+            try:
+                lat = float(latitude)
+                lon = float(longitude)
+            except (ValueError, TypeError):
+                return jsonify(
+                    {"success": False, "message": "Invalid coordinates provided"}
+                ), 400
+
+            location_log = LocationLog(
+                trip_detail_id=trip_detail.id,
+                action_type='departure',
+                latitude=lat,
+                longitude=lon,
+                captured_at=datetime.now(),
+                user_id=current_user.id
+            )
+            db.session.add(location_log)
 
         db.session.commit()
         return jsonify(
