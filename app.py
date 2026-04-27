@@ -3548,14 +3548,13 @@ def calculate_period_kpis(start_date, end_date):
     difot_score = (on_time_rate + in_full_rate) / 2
 
     # Truck Utilization (in-house schedules only)
+    # Calculation: Average of (Trip CBM / Vehicle Capacity) for each trip
+    # Each trip is independent - we don't sum CBM across trips
 
-    utilization_records = (
+    # Get utilization for each individual trip
+    trip_utilizations = (
         db.session.query(
-            Trip.vehicle_id,
-            Vehicle.plate_number,
-            Vehicle.capacity,
-            sql_func.sum(Trip.total_cbm).label("total_loaded_cbm"),
-            sql_func.count(Trip.id).label("trip_count"),
+            (Trip.total_cbm / Vehicle.capacity * 100).label("utilization_percent"),
         )
         .join(Vehicle)
         .join(Schedule)
@@ -3564,26 +3563,18 @@ def calculate_period_kpis(start_date, end_date):
             Schedule.type == "in-house",
             Vehicle.capacity.isnot(None),
             Vehicle.capacity > 0,
+            Trip.total_cbm.isnot(None),
         )
-        .group_by(Trip.vehicle_id, Vehicle.plate_number, Vehicle.capacity)
         .all()
     )
 
-    total_weighted_util = (
-        sum(
-            [
-                (r.total_loaded_cbm / r.capacity * 100) * r.trip_count
-                for r in utilization_records
-            ]
-        )
-        if utilization_records
+    # Calculate average utilization across all trips
+    utilization_percentages = [r.utilization_percent for r in trip_utilizations]
+    utilization = (
+        (sum(utilization_percentages) / len(utilization_percentages))
+        if utilization_percentages
         else 0
     )
-
-    total_trips = (
-        sum([r.trip_count for r in utilization_records]) if utilization_records else 0
-    )
-    utilization = (total_weighted_util / total_trips) if total_trips > 0 else 0
 
     # Fuel Efficiency (sum of trip distances / sum of refill liters)
     start_datetime = datetime.combine(start_date, datetime.min.time())
@@ -3819,38 +3810,30 @@ def dashboard_trends():
         current_date += timedelta(days=1)
 
     # Truck utilization trend (in-house schedules only)
+    # Calculation: Average of (Trip CBM / Vehicle Capacity) for each trip
     truck_utilization = []
     current_date = start_date
     while current_date <= end_date:
-        # Get total loaded CBM from all trips on this date (in-house only)
-        total_loaded = (
-            db.session.query(sql_func.sum(Trip.total_cbm))
-            .join(Schedule)
-            .filter(
-                Schedule.delivery_schedule == current_date, Schedule.type == "in-house"
+        # Get utilization for each trip on this date
+        trip_utilizations = (
+            db.session.query(
+                (Trip.total_cbm / Vehicle.capacity * 100).label("utilization_percent"),
             )
-            .scalar()
-            or 0
-        )
-
-        # Get distinct vehicles used on this date and sum their capacity once each (in-house only)
-        total_capacity = (
-            db.session.query(sql_func.sum(Vehicle.capacity))
-            .join(Trip)
+            .join(Vehicle)
             .join(Schedule)
             .filter(
                 Schedule.delivery_schedule == current_date,
                 Schedule.type == "in-house",
                 Vehicle.capacity.isnot(None),
                 Vehicle.capacity > 0,
+                Trip.total_cbm.isnot(None),
             )
-            .distinct()
-            .scalar()
-            or 0
+            .all()
         )
 
-        if total_capacity > 0:
-            util_percent = total_loaded / total_capacity * 100
+        if trip_utilizations:
+            util_percentages = [r.utilization_percent for r in trip_utilizations]
+            util_percent = sum(util_percentages) / len(util_percentages)
         else:
             util_percent = 0
 
