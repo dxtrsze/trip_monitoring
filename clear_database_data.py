@@ -18,7 +18,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from app import app, db
 from models import (
     TripDetail, Trip, Schedule, Data, Backload,
-    Odo, DailyVehicleCount, User, Vehicle, Cluster, Manpower
+    Odo, DailyVehicleCount, User, Vehicle, Cluster, Manpower,
+    LCLSummary, LCLDetail, TimeLog, ArchiveLog
 )
 
 def get_model_class(table_name):
@@ -35,6 +36,10 @@ def get_model_class(table_name):
         'vehicle': Vehicle,
         'cluster': Cluster,
         'manpower': Manpower,
+        'lcl_summary': LCLSummary,
+        'lcl_detail': LCLDetail,
+        'time_log': TimeLog,
+        'archive_log': ArchiveLog,
     }
     return model_map.get(table_name)
 
@@ -60,6 +65,10 @@ def clear_database():
                 ('backload', 'Backload'),
                 ('odo', 'Odo'),
                 ('daily_vehicle_count', 'DailyVehicleCount'),
+                ('lcl_detail', 'LCLDetail'),
+                ('lcl_summary', 'LCLSummary'),
+                ('time_log', 'TimeLog'),
+                ('archive_log', 'ArchiveLog'),
             ]
 
             print(f"\nTables to preserve: {', '.join(sorted(preserve_tables))}")
