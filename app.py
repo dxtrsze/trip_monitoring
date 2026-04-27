@@ -3244,7 +3244,10 @@ def location_logs():
     action_type = request.args.get('action_type')
 
     # Build query
-    query = LocationLog.query.join(TripDetail)
+    query = LocationLog.query.outerjoin(TripDetail)
+
+    # Filter to only get records with valid trip_detail
+    query = query.filter(TripDetail.id.isnot(None))
 
     # Apply filters
     if start_date:
