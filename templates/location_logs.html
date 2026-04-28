@@ -259,21 +259,21 @@
     loadVehicleRoutes();
   }
 
-  function createInIcon(color) {
+  function createInIcon(color, order) {
     return L.divIcon({
       className: 'custom-div-icon',
-      html: '<div style="background:' + color + ';width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>',
-      iconSize: [14, 14],
-      iconAnchor: [7, 7]
+      html: '<div style="background:' + color + ';width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:bold;">' + (order || '') + '</div>',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
     });
   }
 
-  function createOutIcon(color) {
+  function createOutIcon(color, order) {
     return L.divIcon({
       className: 'custom-div-icon',
-      html: '<div style="background:' + color + ';width:12px;height:12px;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.4);transform:rotate(45deg);"></div>',
-      iconSize: [12, 12],
-      iconAnchor: [6, 6]
+      html: '<div style="background:' + color + ';width:24px;height:24px;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.4);transform:rotate(45deg);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:bold;"><span style="transform:rotate(-45deg);">' + (order || '') + '</span></div>',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
     });
   }
 
@@ -371,7 +371,7 @@
             if (stop.in_location) {
               var inMarker = L.marker(
                 [stop.in_location.lat, stop.in_location.lng],
-                { icon: createInIcon(color) }
+                { icon: createInIcon(color, stop.delivery_order) }
               );
               inMarker.bindPopup(buildPopupContent(stop, vehicle.plate_number));
               markersGroup.addLayer(inMarker);
@@ -383,7 +383,7 @@
             if (stop.out_location) {
               var outMarker = L.marker(
                 [stop.out_location.lat, stop.out_location.lng],
-                { icon: createOutIcon(color) }
+                { icon: createOutIcon(color, stop.delivery_order) }
               );
               outMarker.bindPopup(buildPopupContent(stop, vehicle.plate_number));
               markersGroup.addLayer(outMarker);
